@@ -402,10 +402,12 @@ async function sendResultToWhatsApp(data){
   // encodeURIComponent lebih kompatibel di Safari/iOS untuk karakter UTF-8 dan emoji.
   // Pastikan seluruh pesan dibentuk sebagai UTF-8 sebelum dikirim ke WhatsApp.
   const encodedMessage=encodeURIComponent(message);
-  const waUrl='https://wa.me/'+WA_NUMBER+'?text='+encodedMessage;
+  // Jangan gunakan wa.me di sini. Pada beberapa jalur redirect WhatsApp, emoji
+  // dapat berubah menjadi karakter pengganti '�'. Gunakan endpoint send langsung.
+  const waUrl='https://api.whatsapp.com/send/?phone='+WA_NUMBER+'&text='+encodedMessage;
 
-  // Universal link WhatsApp: iPhone dan Android sama-sama dapat meneruskannya
-  // ke aplikasi WhatsApp jika terpasang, atau ke WhatsApp Web bila tidak.
+  // Endpoint send langsung lebih aman untuk pesan UTF-8/emoji.
+  // Jika WhatsApp terpasang, Android/iPhone akan meneruskannya ke aplikasi.
   window.location.href=waUrl;
 }
 
