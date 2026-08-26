@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
 
     const { data: targetProfile, error: targetError } = await adminClient
       .from('profiles')
-      .select('id, username, full_name, role, is_active, expires_at')
+      .select('id, username, full_name, role, is_active, expires_at, location_name, location_latitude, location_longitude')
       .eq('id', userId)
       .maybeSingle()
 
@@ -176,6 +176,9 @@ Deno.serve(async (req) => {
           full_name: targetProfile.full_name || '',
           is_active: targetProfile.is_active !== false,
           expires_at: targetProfile.expires_at || null,
+          location_name: targetProfile.location_name || '',
+          location_latitude: targetProfile.location_latitude ?? null,
+          location_longitude: targetProfile.location_longitude ?? null,
         },
       })
     }
@@ -186,12 +189,28 @@ Deno.serve(async (req) => {
       const fullName = String(body.full_name ?? '').trim()
       const password = String(body.password ?? '')
       const expiresAtRaw = String(body.expires_at ?? '').trim()
+      const locationName = String(body.location_name ?? '').trim()
+      const locationLatitude = body.location_latitude === '' || body.location_latitude == null
+        ? null : Number(body.location_latitude)
+      const locationLongitude = body.location_longitude === '' || body.location_longitude == null
+        ? null : Number(body.location_longitude)
       const isActive = body.is_active === undefined
         ? targetProfile.is_active !== false
         : Boolean(body.is_active)
 
       if (!email) throw new Error('Email wajib diisi.')
       if (password && password.length < 6) throw new Error('Password minimal 6 karakter.')
+      if ((locationLatitude === null) !== (locationLongitude === null)) {
+        throw new Error('Latitude dan longitude lokasi harus diisi berpasangan.')
+      }
+      if (locationLatitude !== null &&
+          (!Number.isFinite(locationLatitude) || locationLatitude < -90 || locationLatitude > 90)) {
+        throw new Error('Latitude lokasi tidak valid.')
+      }
+      if (locationLongitude !== null &&
+          (!Number.isFinite(locationLongitude) || locationLongitude < -180 || locationLongitude > 180)) {
+        throw new Error('Longitude lokasi tidak valid.')
+      }
 
       let requestedExpiresAt: string | null = null
       if (expiresAtRaw) {
@@ -280,11 +299,40 @@ Deno.serve(async (req) => {
           full_name: fullName || username || email,
           is_active: isActive,
           expires_at: expiresAt,
+          location_name: locationName || null,
+          location_latitude: locationLatitude,
+          location_longitude: locationLongitude,
         })
         .eq('id', userId)
 
       if (updateError) {
         throw new Error('Auth berhasil diperbarui, tetapi profil gagal disimpan: ' + updateError.message)
+      }
+
+      // Verifikasi ulang agar admin mendapat kepastian bahwa lokasi benar-benar
+      // sudah masuk ke database, bukan hanya berhasil pada request update.
+      const { data: savedProfile, error: verifyError } = await adminClient
+        .from('profiles')
+        .select('location_name, location_latitude, location_longitude')
+        .eq('id', userId)
+        .maybeSingle()
+
+      if (verifyError) {
+        throw new Error('Profil sudah diperbarui, tetapi verifikasi lokasi gagal: ' + verifyError.message)
+      }
+
+      const savedLat = savedProfile?.location_latitude ?? null
+      const savedLon = savedProfile?.location_longitude ?? null
+
+      const locationMatches =
+        (locationLatitude === null && locationLongitude === null &&
+          savedLat === null && savedLon === null) ||
+        (locationLatitude !== null && locationLongitude !== null &&
+          Number(savedLat) === Number(locationLatitude) &&
+          Number(savedLon) === Number(locationLongitude))
+
+      if (!locationMatches) {
+        throw new Error('Data lokasi belum tersimpan sesuai nilai yang dikirim. Pastikan Edge Function terbaru sudah di-deploy dan kolom lokasi sudah ada di profiles.')
       }
 
       return json({
