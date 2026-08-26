@@ -55,9 +55,25 @@ Deno.serve(async (req) => {
     const username = String(body.username || '').trim()
     const fullName = String(body.full_name || '').trim()
     const days = Math.max(1, Math.min(3650, Number(body.days) || 30))
+    const locationName = String(body.location_name || '').trim()
+    const locationLatitude = body.location_latitude === '' || body.location_latitude == null
+      ? null : Number(body.location_latitude)
+    const locationLongitude = body.location_longitude === '' || body.location_longitude == null
+      ? null : Number(body.location_longitude)
 
     if (!email || !password) throw new Error('Email dan password wajib diisi.')
     if (password.length < 6) throw new Error('Password minimal 6 karakter.')
+    if ((locationLatitude === null) !== (locationLongitude === null)) {
+      throw new Error('Latitude dan longitude lokasi harus diisi berpasangan.')
+    }
+    if (locationLatitude !== null &&
+        (!Number.isFinite(locationLatitude) || locationLatitude < -90 || locationLatitude > 90)) {
+      throw new Error('Latitude lokasi tidak valid.')
+    }
+    if (locationLongitude !== null &&
+        (!Number.isFinite(locationLongitude) || locationLongitude < -180 || locationLongitude > 180)) {
+      throw new Error('Longitude lokasi tidak valid.')
+    }
 
     const { data: created, error: createError } = await adminClient.auth.admin.createUser({
       email,
@@ -82,6 +98,9 @@ Deno.serve(async (req) => {
       role: 'user',
       is_active: true,
       expires_at: expires,
+      location_name: locationName || null,
+      location_latitude: locationLatitude,
+      location_longitude: locationLongitude,
     }, { onConflict: 'id' })
 
     if (insertError) {
