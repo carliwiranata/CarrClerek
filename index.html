@@ -103,6 +103,36 @@ small{word-break:break-all}
 .admin-edit-save{border:1px solid #16834b;border-radius:11px;background:#0d4d2d;color:#8dffba;padding:12px;font-weight:900}
 .admin-edit-save:disabled{opacity:.55}
 @media(max-width:650px){.admin-edit-grid{grid-template-columns:1fr}.admin-edit-field.full{grid-column:auto}.admin-edit-box{padding:16px}.admin-edit-modal{padding:10px}}
+.pps-admin-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:10px}.pps-category-card{background:#171717;border:1px solid #303030;border-radius:15px;padding:14px}.pps-cat-title{font-size:18px;font-weight:900;margin-bottom:10px}.pps-status{margin-top:8px;min-height:18px}.pps-product-list{margin-top:12px;border-top:1px solid #2d2d2d;padding-top:10px;max-height:260px;overflow:auto}.pps-product-row{display:grid;grid-template-columns:100px 1fr auto;gap:10px;align-items:center;padding:8px 4px;border-bottom:1px solid rgba(255,255,255,.07);font-size:13px}.pps-product-plu{font-weight:800;color:#79ffad}.pps-product-name{color:#f2f2f2}.pps-edit-btn{border:1px solid #555;background:#222;color:#fff;border-radius:8px;padding:5px 9px;font-size:12px}.pps-empty{color:#8e96a3;font-size:13px;padding:8px 4px}.pps-master-summary{margin-top:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.pps-master-pill{background:#191919;border:1px solid #2d2d2d;border-radius:12px;padding:10px;text-align:center}.pps-master-pill b{display:block;font-size:20px;margin-top:3px}.pps-master-admin{display:none}.pps-report{margin-top:16px}.pps-report-title{text-align:center;font-size:24px;font-weight:950;margin-bottom:18px}.pps-date-card{margin-top:18px}.pps-date-title{font-size:20px;font-weight:900;margin-bottom:14px}.pps-cat-section{margin-top:14px;background:#151719;border:1px solid #2c3035;border-radius:16px;padding:14px}.pps-cat-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}.pps-cat-name{font-size:18px;font-weight:900}.pps-cat-total{font-size:14px;color:#ffb45a;font-weight:900}.pps-table{width:100%;border-collapse:collapse}.pps-table th,.pps-table td{padding:9px 7px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px;text-align:left}.pps-table th{color:#aeb5c3}.pps-table td:last-child,.pps-table th:last-child{text-align:right}.pps-grand-note{color:#aeb5c3;font-size:12px;margin-top:8px}@media(max-width:650px){.pps-admin-grid{grid-template-columns:1fr}.pps-master-summary{grid-template-columns:1fr 1fr}}
+.pps-notice{
+  margin-top:18px;
+  padding:18px 18px 16px;
+  background:linear-gradient(145deg,#171717,#111111);
+  border:1px solid #3a3a3a;
+  border-left:4px solid #79ffad;
+  border-radius:16px;
+  box-shadow:0 8px 24px rgba(0,0,0,.18);
+}
+
+.pps-notice-title{
+  font-size:18px;
+  font-weight:900;
+  color:#79ffad;
+  margin-bottom:12px;
+  letter-spacing:.3px;
+}
+
+.pps-notice-text{
+  font-size:13px;
+  line-height:1.7;
+  color:#d8dbe2;
+}
+
+.pps-notice-thanks{
+  margin-top:12px;
+  font-weight:800;
+  color:#fff;
+}
 </style>
 
 <!-- Leaflet CSS dimuat oleh ensureLeafletLoaded() agar tidak gagal karena SRI/CDN. -->
@@ -190,6 +220,7 @@ small{word-break:break-all}
         <div class="admin-stat">Nonaktif<b id="adminInactive">0</b></div>
       </div>
     </div>
+    <div id="ppsMasterAdminCard" class="admin-card pps-master-admin"><div class="admin-title" style="font-size:21px">📦 Master Produk</div><div class="admin-muted" style="margin:6px 0 14px">Kelola PLU dan nama produk. Setiap kategori mempunyai file Excel sendiri.</div><div class="pps-admin-grid"><div class="pps-category-card"><div class="pps-cat-title">PSM</div><input id="excelPSM" type="file" accept=".xlsx,.xls,.csv" style="display:none"><button class="admin-mini admin-green" type="button" onclick="document.getElementById('excelPSM').click()">📥 Upload Excel PSM</button><button class="admin-mini" type="button" onclick="downloadProductTemplate('PSM')">⬇️ Template</button><div id="excelPSMStatus" class="admin-muted pps-status"></div><div id="productListPSM" class="pps-product-list"><div class="pps-empty">Belum ada produk.</div></div></div><div class="pps-category-card"><div class="pps-cat-title">PWP</div><input id="excelPWP" type="file" accept=".xlsx,.xls,.csv" style="display:none"><button class="admin-mini admin-green" type="button" onclick="document.getElementById('excelPWP').click()">📥 Upload Excel PWP</button><button class="admin-mini" type="button" onclick="downloadProductTemplate('PWP')">⬇️ Template</button><div id="excelPWPStatus" class="admin-muted pps-status"></div><div id="productListPWP" class="pps-product-list"><div class="pps-empty">Belum ada produk.</div></div></div><div class="pps-category-card"><div class="pps-cat-title">SERTIS</div><input id="excelSERTIS" type="file" accept=".xlsx,.xls,.csv" style="display:none"><button class="admin-mini admin-green" type="button" onclick="document.getElementById('excelSERTIS').click()">📥 Upload Excel SERTIS</button><button class="admin-mini" type="button" onclick="downloadProductTemplate('SERTIS')">⬇️ Template</button><div id="excelSERTISStatus" class="admin-muted pps-status"></div><div id="productListSERTIS" class="pps-product-list"><div class="pps-empty">Belum ada produk.</div></div></div><div class="pps-category-card"><div class="pps-cat-title">SEGER</div><input id="excelSEGER" type="file" accept=".xlsx,.xls,.csv" style="display:none"><button class="admin-mini admin-green" type="button" onclick="document.getElementById('excelSEGER').click()">📥 Upload Excel SEGER</button><button class="admin-mini" type="button" onclick="downloadProductTemplate('SEGER')">⬇️ Template</button><div id="excelSEGERStatus" class="admin-muted pps-status"></div><div id="productListSEGER" class="pps-product-list"><div class="pps-empty">Belum ada produk.</div></div></div></div>
     <div class="admin-card">
       <div class="admin-title" style="font-size:21px">➕ Tambah User</div>
       <div class="admin-row">
@@ -230,7 +261,7 @@ small{word-break:break-all}
     </div>
   </div>
 </div>
-
+</div></div></div>
 
 
 <div id="adminEditModal" class="admin-edit-modal" role="dialog" aria-modal="true" aria-labelledby="adminEditTitle">
@@ -415,6 +446,293 @@ small{word-break:break-all}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const fmt = n => new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n);
+const $ = id => document.getElementById(id);
+
+function reset(){
+  $('result').style.display='none';
+  $('error').style.display='none';
+  $('ok').style.display='none';
+}
+function showError(msg){$('error').textContent=msg;$('error').style.display='block';$('ok').style.display='none';}
+function showOk(msg){$('ok').textContent=msg;$('ok').style.display='block';$('error').style.display='none';}
+
+async function getDatabaseBytes(file){
+  const lower=file.name.toLowerCase();
+  const bytes=new Uint8Array(await file.arrayBuffer());
+
+  // ZIP: ambil SEMUA database, bukan hanya database pertama.
+  if(lower.endsWith('.zip')){
+    const zip=await JSZip.loadAsync(bytes);
+    const names=Object.keys(zip.files)
+      .filter(n=>/\.(db|sqlite|sqlite3)$/i.test(n) && !zip.files[n].dir);
+
+    if(!names.length){
+      throw new Error('ZIP tidak berisi file database .db/.sqlite/.sqlite3.');
+    }
+
+    $('status').textContent='Menemukan '+names.length+' database di dalam ZIP.';
+
+    const sources=[];
+    for(const name of names){
+      sources.push({
+        bytes: await zip.files[name].async('uint8array'),
+        name
+      });
+    }
+    return sources;
+  }
+
+  return [{bytes,name:file.name}];
+}
+
+function normalizeTransactionPpsPlu(value){
+  let s=normalizePluValue(value);
+  // Pada tx_trans, PLU tersimpan dengan akhiran '2' sebagai digit tambahan.
+  // Master Produk Admin memakai PLU tanpa digit tambahan tersebut.
+  // Contoh: 4656682 di database -> 465668 di Master.
+  if(/^\d+2$/.test(s) && s.length>1) s=s.slice(0,-1);
+  return s;
+}
+
+function normalizePluValue(value){
+  let s=String(value ?? '').trim();
+  if(!s)return '';
+  // Excel/SQLite kadang memberi PLU numerik sebagai 2625642.0.
+  if(/^\d+\.0+$/.test(s)) s=s.replace(/\.0+$/,'');
+  s=s.replace(/^\s+|\s+$/g,'');
+  return s;
+}
+
+function normalizeTransactionDate(value){
+  const s=String(value ?? '').trim();
+  if(!s) return null;
+
+  // Format database CashViewer biasanya DD/MM/YYYY.
+  let m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+  if(m){
+    const dd=String(m[1]).padStart(2,'0');
+    const mm=String(m[2]).padStart(2,'0');
+    const yyyy=m[3];
+    return {
+      key:`${yyyy}-${mm}-${dd}`,
+      label:`${dd}/${mm}/${yyyy}`
+    };
+  }
+
+  // Fallback untuk format YYYY-MM-DD.
+  m=s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+  if(m){
+    const yyyy=m[1];
+    const mm=String(m[2]).padStart(2,'0');
+    const dd=String(m[3]).padStart(2,'0');
+    return {
+      key:`${yyyy}-${mm}-${dd}`,
+      label:`${dd}/${mm}/${yyyy}`
+    };
+  }
+
+  return null;
+}
+
+function dateFromFilename(filename){
+  const m=String(filename).match(/(?:^|[_-])(\d{4})-(\d{2})-(\d{2})(?:[_-]|\.|$)/);
+  if(!m) return null;
+  return {
+    key:`${m[1]}-${m[2]}-${m[3]}`,
+    label:`${m[3]}/${m[2]}/${m[1]}`
+  };
+}
+
+let pendingWhatsAppResult = null;
+
+function isIOSDevice(){
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function isSecureForLocation(){
+  return window.isSecureContext === true || location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+}
+
+function showLocationHelp(message){
+  $('result').style.display='none';
+  $('status').style.display='block';
+  $('status').textContent='Lokasi diperlukan.';
+  showError(message);
+  $('retryLocation').style.display='block';
+}
+
+if(isIOSDevice() && !isSecureForLocation()){
+  $('iosBanner').style.display='block';
+}
+
+$('dbFile').addEventListener('change', async e=>{
+  const file=e.target.files[0]; if(!file)return;
+  reset();
+  $('retryLocation').style.display='none';
+  $('status').style.display='block';
+  $('status').textContent='Membaca file...';
+
+  try{
+    const sources=await getDatabaseBytes(file);
+    $('status').textContent='Membuka '+sources.length+' database...';
+
+    const SQL=await initSqlJs({
+      locateFile:f=>'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/'+f
+    });
+
+    const groupsMap=new Map();
+    const ppsMap=new Map();
+    const productMaster=await loadProductMasterForUser();
+    const productByPlu=new Map();
+    for(const p of (productMaster||[])){
+      const plu=normalizePluValue(p.plu);
+      if(plu && !productByPlu.has(plu)) productByPlu.set(plu,p);
+    }
+
+    // Laporan PPS memakai tanggal dari tx_trans (tanggal item terjual),
+    // bukan tanggal dari nama file. Data cash tetap berasal dari tx_tsale.
+    for(let sourceIndex=0;sourceIndex<sources.length;sourceIndex++){
+      const source=sources[sourceIndex];
+      $('status').textContent=`Membaca database ${sourceIndex+1}/${sources.length}: ${source.name}`;
+      const db=new SQL.Database(source.bytes);
+
+      const allTables=db.exec("SELECT name FROM sqlite_master WHERE type='table'")[0]?.values||[];
+      const tableNames=new Set(allTables.map(r=>String(r[0]).toLowerCase()));
+      const fallbackDate=dateFromFilename(source.name);
+      const kasir=extractNamaKasirFromDbBytes(source.bytes);
+
+      // =========================
+      // DATA LAMA: tx_tsale / cash
+      // =========================
+      if(tableNames.has('tx_tsale')){
+        const cols=db.exec("PRAGMA table_info(tx_tsale)")[0]?.values||[];
+        const names=cols.map(r=>String(r[1]).toLowerCase());
+        if(names.includes('cash')&&names.includes('change_pay')){
+          const hasDateTx=names.includes('date_tx');
+          let q;
+          if(hasDateTx){
+            q=db.exec(`SELECT date_tx,COUNT(*) jumlah,COALESCE(SUM(CAST(cash AS REAL)),0) total_cash,COALESCE(SUM(CAST(change_pay AS REAL)),0) total_change FROM tx_tsale GROUP BY date_tx ORDER BY date_tx`)[0];
+          }else{
+            q=db.exec(`SELECT COUNT(*) jumlah,COALESCE(SUM(CAST(cash AS REAL)),0) total_cash,COALESCE(SUM(CAST(change_pay AS REAL)),0) total_change FROM tx_tsale`)[0];
+            q={values:[[null,q?.values?.[0]?.[0]||0,q?.values?.[0]?.[1]||0,q?.values?.[0]?.[2]||0]]};
+          }
+          for(const row of(q?.values||[])){
+            const parsedDate=normalizeTransactionDate(hasDateTx?row[0]:null)||fallbackDate||{key:'unknown',label:'Tanggal tidak diketahui'};
+            const count=Number(row[1])||0;
+            const cash=Number(row[2])||0;
+            const change=Number(row[3])||0;
+            if(!groupsMap.has(parsedDate.key)){
+              groupsMap.set(parsedDate.key,{dateKey:parsedDate.key,dateLabel:parsedDate.label,count:0,cash:0,change:0,net:0,filenames:[],kasirs:[]});
+            }
+            const g=groupsMap.get(parsedDate.key);
+            g.count+=count; g.cash+=cash; g.change+=change; g.net+=cash-change;
+            if(!g.filenames.includes(source.name))g.filenames.push(source.name);
+            if(kasir&&!g.kasirs.includes(kasir))g.kasirs.push(kasir);
+          }
+        }
+      }
+
+      // =========================
+      // DATA PPS: tx_trans / PLU / qty
+      // =========================
+      if(tableNames.has('tx_trans')){
+        const tcols=db.exec("PRAGMA table_info(tx_trans)")[0]?.values||[];
+        const tnames=tcols.map(r=>String(r[1]).toLowerCase());
+        if(tnames.includes('plu')&&tnames.includes('qty')){
+          const hasTDate=tnames.includes('date_tx');
+          const dateExpr=hasTDate?'date_tx':'NULL';
+          const groupExpr=hasTDate?'date_tx, plu':'plu';
+          const orderExpr=hasTDate?'date_tx, plu':'plu';
+          const tq=db.exec(`
+            SELECT ${dateExpr} AS date_tx,
+                   CAST(plu AS TEXT) AS plu,
+                   COALESCE(SUM(CAST(qty AS REAL)),0) AS qty
+            FROM tx_trans
+            GROUP BY ${groupExpr}
+            HAVING COALESCE(SUM(CAST(qty AS REAL)),0) > 0
+            ORDER BY ${orderExpr}
+          `)[0];
+
+          for(const r of(tq?.values||[])){
+            const parsedDate=normalizeTransactionDate(hasTDate?r[0]:null)||fallbackDate||{key:'unknown',label:'Tanggal tidak diketahui'};
+            const plu=normalizeTransactionPpsPlu(r[1]);
+            const qty=Number(r[2])||0;
+            if(!plu||qty<=0)continue;
+
+            // Pastikan tanggal transaksi dari tx_trans selalu membuat grup laporan.
+            if(!groupsMap.has(parsedDate.key)){
+              groupsMap.set(parsedDate.key,{dateKey:parsedDate.key,dateLabel:parsedDate.label,count:0,cash:0,change:0,net:0,filenames:[],kasirs:[]});
+            }
+            const g=groupsMap.get(parsedDate.key);
+            if(!g.filenames.includes(source.name))g.filenames.push(source.name);
+            if(kasir&&!g.kasirs.includes(kasir))g.kasirs.push(kasir);
+
+            const master=productByPlu.get(plu);
+            if(!master)continue;
+
+            if(!ppsMap.has(parsedDate.key))ppsMap.set(parsedDate.key,new Map());
+            const byCat=ppsMap.get(parsedDate.key);
+            const category=String(master.category||'').toUpperCase();
+            if(!PPS_CATEGORIES.includes(category))continue;
+            if(!byCat.has(category))byCat.set(category,new Map());
+            const items=byCat.get(category);
+            const prev=items.get(plu);
+            if(prev)prev.qty+=qty;
+            else items.set(plu,{plu,product_name:master.product_name,qty});
+          }
+        }
+      }
+      db.close();
+    }
+
+    const allGroups=[...groupsMap.values()]
+  .sort((a,b)=>{
+    if(a.dateKey==='unknown') return 1;
+    if(b.dateKey==='unknown') return -1;
+    return a.dateKey.localeCompare(b.dateKey);
+  })
+  .map(g=>({
+    ...g,
+    products:[...(ppsMap.get(g.dateKey)||new Map()).entries()]
+      .map(([category,items])=>({
+        category,
+        items:[...items.values()]
+          .filter(x=>x.qty>0)
+          .sort((a,b)=>b.qty-a.qty)
+      }))
+      .filter(c=>c.items.length)
+  }));
+
+// Ambil HANYA tanggal transaksi paling terbaru
+const knownGroups=allGroups.filter(g=>g.dateKey!=='unknown');
+
+const groups=knownGroups.length
+  ? [knownGroups[knownGroups.length-1]]
+  : allGroups.slice(-1);
+
+    if(!groups.length)throw new Error('Tidak ditemukan transaksi di database.');
+
+    const first=groups[0];
+    $('count').textContent=first.count.toLocaleString('id-ID');
+    $('cash').textContent=fmt(first.cash);
+    $('change').textContent=fmt(first.change);
+    $('calc').textContent=fmt(first.net);
+    $('filename').textContent=first.filenames.join(', ');
+    pendingWhatsAppResult={count:first.count,cash:first.cash,change:first.change,net:first.net,filename:first.filenames.join(', '),kasir:first.kasirs.join(', '),groups,multi:groups.length>1};
+    renderTransactionGroupsInApp(pendingWhatsAppResult);
+    $('result').style.display='none';
+    $('status').textContent='Data berhasil dibaca dan Laporan PPS ditampilkan.';
+
+  }catch(err){
+    $('status').textContent='Gagal membaca file.';
+    showError(err.message || String(err));
+  }
+});
+</script>
 <script>
 const fmt = n => new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n);
 const $ = id => document.getElementById(id);
@@ -590,9 +908,7 @@ $('dbFile').addEventListener('change', async e=>{
         };
       }
 
-      const kasir=extractNamaKasirFromDbBytes(source.bytes);
       const fallbackDate=dateFromFilename(source.name);
-
       for(const row of (q?.values || [])){
         const rawDate=hasDateTx ? row[0] : null;
         const parsedDate=normalizeTransactionDate(rawDate) || fallbackDate || {
@@ -683,69 +999,117 @@ $('dbFile').addEventListener('change', async e=>{
 
 <script>
 
-// === TAMPILKAN HASIL TRANSAKSI LANGSUNG DI APLIKASI ===
+// === TAMPILKAN HASIL TRANSAKSI + LAPORAN PPS LANGSUNG DI APLIKASI ===
 function renderTransactionGroupsInApp(data){
-  const groups=Array.isArray(data && data.groups) ? data.groups : [];
-  if(!groups.length) return;
-
+  const groups=Array.isArray(data&&data.groups)?data.groups:[];
+  if(!groups.length)return;
   let box=document.getElementById('appTransactionResults');
   if(!box){
-    box=document.createElement('div');
-    box.id='appTransactionResults';
+    box=document.createElement('div'); box.id='appTransactionResults';
     const result=document.getElementById('result');
-    if(result && result.parentNode) result.parentNode.insertBefore(box,result.nextSibling);
+    if(result&&result.parentNode) result.parentNode.insertBefore(box,result.nextSibling);
     else document.body.appendChild(box);
   }
+  box.innerHTML=''; box.className='pps-report';
 
-  box.innerHTML='';
-
-  const heading=document.createElement('div');
-  heading.className='card';
-  heading.innerHTML='<div class="label">HASIL TRANSAKSI</div><div style="font-size:14px;color:#aeb5c3;margin-top:4px">Data ditampilkan berdasarkan tanggal transaksi.</div>';
-  box.appendChild(heading);
+  const oldHeading=document.createElement('div'); oldHeading.className='card';
+  oldHeading.innerHTML='<div class="label" style="font-size:18px">HASIL TRANSAKSI</div><div style="font-size:14px;color:#aeb5c3;margin-top:4px">Data ditampilkan berdasarkan tanggal transaksi.</div>';
+  box.appendChild(oldHeading);
 
   groups.forEach(g=>{
-    const card=document.createElement('div');
-    card.className='card app-date-group';
-
-    const title=document.createElement('div');
-    title.className='app-date-title';
-    title.textContent='📅 '+(g.dateLabel || 'Tanggal tidak diketahui');
-    card.appendChild(title);
-
+    const card=document.createElement('div'); card.className='card app-date-group';
+    const title=document.createElement('div'); title.className='app-date-title';
+    title.textContent='📅 '+(g.dateLabel||'Tanggal tidak diketahui'); card.appendChild(title);
     if((g.kasirs||[]).length){
-      const k=document.createElement('div');
-      k.className='app-kasir';
-      k.textContent='👤 Kasir: '+g.kasirs.join(', ');
-      card.appendChild(k);
+      const k=document.createElement('div'); k.className='app-kasir';
+      k.textContent='👤 Kasir: '+g.kasirs.join(', '); card.appendChild(k);
     }
-
     const rows=[
-      ['📁 File', (g.filenames||[]).join(', ') || '-'],
-      ['🧾 Jumlah Transaksi', Number(g.count||0).toLocaleString('id-ID')],
-      ['💵 Total Cash', fmt(g.cash)],
-      ['💸 Total Uang Kembalian', fmt(g.change)],
-      ['💰 Total Uang Fisik', fmt(g.net)]
+      ['📁 File',(g.filenames||[]).join(', ')||'-'],
+      ['🧾 Jumlah Transaksi',Number(g.count||0).toLocaleString('id-ID')],
+      ['💵 Total Cash',fmt(g.cash)],
+      ['💸 Total Uang Kembalian',fmt(g.change)],
+      ['💰 Total Uang Fisik',fmt(g.net)]
     ];
-
     rows.forEach(([label,value])=>{
-      const row=document.createElement('div');
-      row.className='app-result-row';
-
-      const l=document.createElement('span');
-      l.className='app-result-label';
-      l.textContent=label;
-
-      const v=document.createElement('span');
-      v.className='app-result-value';
-      v.textContent=value;
-
-      row.append(l,v);
-      card.appendChild(row);
+      const row=document.createElement('div'); row.className='app-result-row';
+      const l=document.createElement('div'); l.className='app-result-label'; l.textContent=label;
+      const v=document.createElement('div'); v.className='app-result-value'; v.textContent=value;
+      row.appendChild(l); row.appendChild(v); card.appendChild(row);
     });
-
     box.appendChild(card);
   });
+
+  const ppsHeading=document.createElement('div'); ppsHeading.className='card pps-report-heading';
+  ppsHeading.innerHTML='<div class="pps-report-title">LAPORAN PPS</div>'; box.appendChild(ppsHeading);
+  const cats=['PSM','PWP','SERTIS','SEGER']; let anyPps=false;
+        // === PEMBERITAHUAN LAPORAN PPS ===
+const notice=document.createElement('div');
+notice.className='pps-notice';
+
+notice.innerHTML=`
+  <div class="pps-notice-title">📢 PEMBERITAHUAN</div>
+
+  <div class="pps-notice-text">
+    Data penjualan di bawah merupakan data penjualan murni yang tercatat
+    di toko. Namun, perlu diperhatikan bahwa tidak semua penjualan
+    otomatis masuk dalam perhitungan ACV, karena tetap harus memenuhi
+    syarat dan mekanisme yang telah ditentukan.
+  </div>
+
+  <div class="pps-notice-text" style="margin-top:10px">
+    Mohon data ini dijadikan sebagai gambaran realisasi penjualan di toko,
+    bukan sebagai angka final pencapaian ACV.
+  </div>
+
+  <div class="pps-notice-thanks">
+    Terima kasih 🙏
+  </div>
+`;
+
+box.appendChild(notice);
+  groups.forEach(g=>{
+
+    const card=document.createElement('div'); card.className='card pps-date-card';
+    const title=document.createElement('div'); title.className='pps-date-title';
+    title.textContent='📅 '+(g.dateLabel||'Tanggal tidak diketahui'); card.appendChild(title);
+    const byCat=new Map((g.products||[]).map(c=>[String(c.category||'').toUpperCase(),c]));
+    let anyDate=false;
+    cats.forEach(cat=>{
+      const c=byCat.get(cat); if(!c||!Array.isArray(c.items))return;
+      const items=c.items.filter(item=>Number(item.qty||0)>0); if(!items.length)return;
+      anyPps=true; anyDate=true;
+      const sec=document.createElement('div'); sec.className='pps-cat-section';
+      const head=document.createElement('div'); head.className='pps-cat-head';
+      const catName=document.createElement('div'); catName.className='pps-cat-name'; catName.textContent=cat;
+      const total=items.reduce((n,x)=>n+Number(x.qty||0),0);
+      const catTotal=document.createElement('div'); catTotal.className='pps-cat-total';
+      catTotal.textContent='TOTAL '+cat+': '+total.toLocaleString('id-ID')+' pcs';
+      head.appendChild(catName); head.appendChild(catTotal); sec.appendChild(head);
+      const table=document.createElement('table'); table.className='pps-table';
+      table.innerHTML='<thead><tr><th>PLU</th><th>Produk</th><th>Terjual</th></tr></thead>';
+      const tb=document.createElement('tbody');
+      items.forEach(item=>{
+        const tr=document.createElement('tr');
+        const td1=document.createElement('td'); td1.textContent=String(item.plu||'');
+        const td2=document.createElement('td'); td2.textContent=String(item.product_name||'');
+        const td3=document.createElement('td'); td3.textContent=Number(item.qty||0).toLocaleString('id-ID');
+        tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tb.appendChild(tr);
+      });
+      table.appendChild(tb); sec.appendChild(table); card.appendChild(sec);
+    });
+    if(!anyDate){
+      const n=document.createElement('div'); n.className='pps-grand-note';
+      n.textContent='Tidak ada PLU yang cocok dengan Master Produk Admin pada tanggal ini.'; card.appendChild(n);
+    }
+    box.appendChild(card);
+  });
+
+  if(!anyPps){
+    const note=document.createElement('div'); note.className='card pps-no-match';
+    note.textContent='Belum ada produk PPS yang cocok dengan Master Produk Admin. Periksa PLU pada master PSM, PWP, SERTIS, dan SEGER.';
+    box.appendChild(note);
+  }
 
   box.style.display='block';
 }
@@ -842,7 +1206,7 @@ function buildWhatsAppMessage(data){
     '2. Tidak diperbolehkan clerek Rp0, minimal Rp-3000.',
     '3. Kerahasiaan aplikasi menjadi tanggung jawab pengguna.',
     '',
-    'Terimakasih sudah menaati peraturan ini, salam satu retail '+E.pray,
+    'Terimakasih sudah menaati peraturan ini, salam developer '+E.pray,
     ''
   ];
 
@@ -868,7 +1232,7 @@ function buildWhatsAppMessage(data){
       ...intro,
       E.person+' Kasir: '+kasir,
       '',
-      E.fire+' HASIL Ayam Panggang Lava '+E.fire,
+      E.fire+' HASIL CEK CLEREK '+E.fire,
       E.folder+' File: '+(g.filenames||[data.filename]).join(', '),
       E.receipt+' Jumlah Transaksi: '+Number(g.count||0).toLocaleString('id-ID'),
       E.money+' Total Cash: '+rupiahNumber(g.cash),
@@ -877,7 +1241,7 @@ function buildWhatsAppMessage(data){
       E.clock+' Waktu: '+formatWaktuID(now),
       E.flag+' Lokasi: '+lokasi,
       E.bolt+' Akurasi: '+akurasi,
-      'Dikirim dari aplikasi Ayam Panggang Lava.'
+      'Dikirim dari aplikasi Cek Clerek.'
     ].join('\n');
   }
 
@@ -893,7 +1257,7 @@ function buildWhatsAppMessage(data){
 
     body.push(E.calendar+' TANGGAL TRANSAKSI: '+g.dateLabel);
     body.push('━━━━━━━━━━━━━━━━━━━━');
-    body.push(E.fire+' HASIL Ayam Panggang Lava '+E.fire);
+    body.push(E.fire+' HASIL CEK CLEREK '+E.fire);
 
     const kasir=(g.kasirs||[]).join(', ');
     if(kasir){
@@ -918,7 +1282,7 @@ function buildWhatsAppMessage(data){
   body.push(E.flag+' Lokasi: '+lokasi);
   body.push(E.bolt+' Akurasi: '+akurasi);
   body.push('');
-  body.push('Dikirim dari aplikasi Ayam Panggang Lava.');
+  body.push('Dikirim dari aplikasi Cek Clerek.');
 
   return body.join('\n');
 }
@@ -1681,6 +2045,10 @@ function adminMsg(text){
   el.textContent=text||'';
   el.style.display=text?'block':'none';
 }
+function hidePpsMasterAdmin(){
+  const el=document.getElementById('ppsMasterAdminCard');
+  if(el) el.style.display='none';
+}
 function showLoginPage(){
   document.getElementById('loginPage').classList.add('show');
   document.getElementById('adminPage').classList.remove('show');
@@ -1701,11 +2069,14 @@ function showUserApp(profile,user){
   startUserLocationWatch(user.id);
 }
 function showAdmin(profile,user){
+  const ppsMaster=document.getElementById('ppsMasterAdminCard');
+  if(ppsMaster) ppsMaster.style.display='block';
   document.getElementById('loginPage').classList.remove('show');
   document.getElementById('appShell').style.display='none';
   document.getElementById('adminPage').classList.add('show');
   document.getElementById('adminWho').textContent='👑 '+(profile.full_name||profile.username||user.email||'Administrator');
   loadAdminUsers();
+  bindProductExcelInputs();
 }
 function validActiveProfile(p){
   if(p.is_active===false) return false;
@@ -1788,6 +2159,17 @@ async function logoutUser(){
   document.getElementById('adminPage').classList.remove('show');
   showLoginPage();
 }
+// === MASTER PRODUK PPS ===
+const PPS_CATEGORIES=['PSM','PWP','SERTIS','SEGER'];
+async function loadProductMasterForUser(){const {data,error}=await supa.from('product_master').select('category,plu,product_name').eq('is_active',true);if(error){console.warn(error.message);return [];}return(data||[]).map(r=>({category:String(r.category||'').toUpperCase(),plu:String(r.plu||'').trim(),product_name:String(r.product_name||'').trim()})).filter(r=>PPS_CATEGORIES.includes(r.category)&&r.plu&&r.product_name);}
+function setProductStatus(c,text,ok=false){const e=document.getElementById('excel'+c+'Status');if(e){e.textContent=text;e.style.color=ok?'#79ffad':'#9fa6b2';}}
+function downloadProductTemplate(c){const ws=XLSX.utils.aoa_to_sheet([['PLU','Nama Produk'],['','']]);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,c);XLSX.writeFile(wb,`Master_${c}.xlsx`);}
+function readExcelFile(file){return new Promise((resolve,reject)=>{try{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('File Excel tidak dapat dibaca. Silakan pilih file yang tersimpan lokal di HP/komputer, lalu coba lagi.'));reader.onabort=()=>reject(new Error('Pembacaan file dibatalkan.'));reader.readAsArrayBuffer(file);}catch(e){reject(e);}})}
+function normalizePpsPlu(v){let s=String(v??'').trim();if(/^\d+\.0+$/.test(s))s=s.replace(/\.0+$/,'');return s;}
+async function uploadProductExcel(c,file){setProductStatus(c,'Membaca Excel...');try{if(!file)throw new Error('File belum dipilih.');const buf=await readExcelFile(file);const wb=XLSX.read(buf,{type:'array',cellText:true,cellDates:false}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false}),out=[];for(const r of rows){const keys=Object.keys(r),pk=keys.find(k=>k.trim().toLowerCase().replace(/[^a-z0-9]/g,'')==='plu'),nk=keys.find(k=>['nama produk','produk','product','product name','name'].includes(k.trim().toLowerCase()));const plu=normalizePpsPlu(pk?r[pk]:''),name=String(nk?r[nk]:'').trim();if(plu&&name)out.push({category:c,plu,product_name:name,is_active:true});}const m=new Map(out.map(x=>[x.plu,x]));const payload=[...m.values()];if(!payload.length)throw new Error('Kolom PLU dan Nama Produk tidak ditemukan.');setProductStatus(c,`Memproses ${payload.length} produk...`);
+const {data:rpcData,error:rpcErr}=await supa.rpc('replace_product_master_category',{p_category:c,p_products:payload});if(rpcErr)throw rpcErr;setProductStatus(c,`Berhasil mengganti data ${c}: ${payload.length} produk.`,true);await loadAdminProductSummary();}catch(e){console.error('Import master produk',e);setProductStatus(c,'Gagal: '+(e?.message||e));}}
+async function loadAdminProductSummary(){const {data,error}=await supa.from('product_master').select('id,category,plu,product_name,is_active').order('category').order('plu');if(error){console.warn(error.message);return;}const n=Object.fromEntries(PPS_CATEGORIES.map(c=>[c,0]));for(const c of PPS_CATEGORIES){const rows=(data||[]).filter(r=>String(r.category||'').toUpperCase()===c&&r.is_active!==false);n[c]=rows.length;const box=document.getElementById('productList'+c);if(box){box.innerHTML=rows.length?rows.map(r=>`<div class="pps-product-row"><div class="pps-product-plu">${escapeAdmin(String(r.plu||''))}</div><div class="pps-product-name">${escapeAdmin(String(r.product_name||''))}</div></div>`).join(''):'<div class="pps-empty">Belum ada produk.</div>';}}}
+function bindProductExcelInputs(){PPS_CATEGORIES.forEach(c=>{const e=document.getElementById('excel'+c);if(e&&!e.dataset.bound){e.dataset.bound='1';e.addEventListener('change',()=>{if(e.files?.[0])uploadProductExcel(c,e.files[0]);e.value='';});}});loadAdminProductSummary();}
 
 /* CRUD USER ADMIN */
 async function getEdgeFunctionErrorMessage(error){
@@ -2024,6 +2406,16 @@ async function deleteAdminUser(id){
 
 </body>
 </html>
+<style>
+/* Integrasi tampilan lama + PPS */
+#appTransactionResults{display:none;margin-top:16px}
+.app-date-group{margin-top:14px}.app-date-title{font-size:18px;font-weight:800;margin-bottom:10px}.app-kasir{font-weight:700;margin-bottom:10px}
+.app-result-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08)}.app-result-row:last-child{border-bottom:0}.app-result-label{color:#aeb5c3;line-height:1.45}.app-result-value{font-weight:700;text-align:right;line-height:1.45;word-break:break-word}
+.pps-report-heading{margin-top:18px}.pps-report-title{font-size:30px;font-weight:900;text-align:center;letter-spacing:.2px}.pps-date-card{margin-top:14px}.pps-date-title{font-size:22px;font-weight:900;margin-bottom:14px}
+.pps-cat-section{margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.1)}.pps-cat-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}.pps-cat-name{font-size:20px;font-weight:900}.pps-cat-total{font-size:14px;font-weight:800;color:#79ffad;text-align:right}
+.pps-table{width:100%;border-collapse:collapse;table-layout:auto}.pps-table th,.pps-table td{padding:9px 7px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;vertical-align:top}.pps-table th{color:#aeb5c3;font-size:12px;text-transform:uppercase}.pps-table td:first-child{font-weight:800;color:#79ffad;white-space:nowrap}.pps-table td:last-child,.pps-table th:last-child{text-align:right;white-space:nowrap}.pps-grand-note,.pps-no-match{color:#aeb5c3;line-height:1.5}
+@media(max-width:650px){.pps-report-title{font-size:27px}.pps-cat-head{align-items:flex-start;flex-direction:column;gap:4px}.pps-cat-total{text-align:left}.pps-table th,.pps-table td{padding:8px 5px;font-size:13px}}
+</style>
 <style>
 /* Versi ini tidak menggunakan WhatsApp untuk laporan transaksi. */
 #appTransactionResults{display:none;margin-top:16px}
