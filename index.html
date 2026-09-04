@@ -1,3 +1,5 @@
+
+
 <!doctype html>
 <html lang="id">
 <head>
@@ -176,6 +178,35 @@ small{word-break:break-all}
 }
 </style>
 
+
+<style id="hourlyDashboardStyles">
+.hourly-dashboard{margin:18px 0;padding:16px;border-radius:18px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09)}
+.hourly-dashboard-title{font-size:20px;font-weight:900}
+.hourly-dashboard-sub{margin-top:4px;color:#8f98a8;font-size:12px}
+.hourly-latest-date{display:inline-flex;margin-top:10px;padding:7px 11px;border-radius:999px;border:1px solid rgba(255,255,255,.1);font-size:11px;font-weight:800}
+.hourly-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
+.hourly-stat{padding:14px;border-radius:15px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025)}
+.hourly-stat span{display:block;color:#aeb5c3;font-size:12px;font-weight:800}
+.hourly-stat b{display:block;font-size:23px;margin-top:6px}
+.hourly-stat small{display:block;color:#8f98a8;font-size:11px;margin-top:5px}
+.hourly-charts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
+.hourly-chart-card{min-width:0;padding:11px;border-radius:15px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.018)}
+.hourly-chart-title{font-size:14px;font-weight:900}
+.hourly-chart-sub{font-size:11px;color:#8f98a8;margin-top:3px}
+.hourly-canvas{display:block;width:100%;height:250px;margin-top:7px}
+@media(max-width:900px){.hourly-charts{grid-template-columns:1fr}}
+@media(max-width:600px){.hourly-stats{grid-template-columns:1fr}.hourly-dashboard{padding:12px}}
+</style>
+
+
+<style id="salesMemberV20Style">
+#hourlyDashboard{width:100%;display:block;margin:0 0 18px;animation:smV20In .6s cubic-bezier(.22,1,.36,1) both}
+#hourlyDashboard .mh-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@keyframes smV20In{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:700px){
+  #hourlyDashboard .mh-stats{grid-template-columns:1fr}
+}
+</style>
 </head>
 <body>
 <div id="gate">
@@ -400,6 +431,9 @@ small{word-break:break-all}
       <small id="filename"></small>
     </div>
   </div>
+
+  
+
 
   <button class="rules-btn" type="button" onclick="openRules()">
     <span style="display:block;font-size:17px">📜 Peraturan Aplikasi</span>
@@ -724,6 +758,7 @@ const groups=knownGroups.length
     $('filename').textContent=first.filenames.join(', ');
     pendingWhatsAppResult={count:first.count,cash:first.cash,change:first.change,net:first.net,filename:first.filenames.join(', '),kasir:first.kasirs.join(', '),groups,multi:groups.length>1};
     renderTransactionGroupsInApp(pendingWhatsAppResult);
+      try { if (typeof buildHourlyDashboard === 'function') await buildHourlyDashboard(sources, SQL); } catch (e) { console.warn('Dashboard per jam:', e); }
     $('result').style.display='none';
     $('status').textContent='Data berhasil dibaca dan Laporan PPS ditampilkan.';
 
@@ -2404,6 +2439,973 @@ async function deleteAdminUser(id){
 }
 </script>
 
+
+<script id="hourlyDashboardFeature">
+(function(){
+  /*
+   * MEMBER PER JAM — V13
+   * Sumber utama database ini:
+   *   tx_tsale: date_tx + time_tx + cust_id + faktur
+   * Fallback:
+   *   tx_trans: date_tx + member_time + member + bill_no
+   *
+   * Satu faktur dihitung satu kali agar tidak berlipat karena
+   * satu transaksi dapat memiliki banyak baris produk.
+   */
+
+  function escIdent(s){
+    return '"' + String(s).replace(/"/g,'""') + '"';
+  }
+
+  function norm(s){
+    return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  }
+
+  function cols(db, table){
+    try{
+      return (db.exec('PRAGMA table_info('+escIdent(table)+')')[0]?.values||[])
+        .map(r=>String(r[1]||''));
+    }catch(e){ return []; }
+  }
+
+  function validMember(v){
+    if(v===null || v===undefined) return false;
+    const s=String(v).trim();
+    return s!=='' && s!=='0' && s!=='-' && s!=='null' && s!=='undefined';
+  }
+
+  function dateKey(v){
+    if(v===null || v===undefined) return null;
+    const s=String(v).trim();
+    if(!s) return null;
+
+    let m=s.match(/(20\d{2})[-\/](\d{1,2})[-\/](\d{1,2})/);
+    if(m) return m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0');
+
+    m=s.match(/(\d{1,2})[-\/](\d{1,2})[-\/](20\d{2})/);
+    if(m) return m[3]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');
+
+    return null;
+  }
+
+  function getHour(v){
+    if(v===null || v===undefined) return null;
+    const s=String(v).trim();
+
+    let m=s.match(/(?:^|\s|T)(\d{1,2}):(\d{2})(?::\d{2})?/);
+    if(m){
+      const h=Number(m[1]);
+      return h>=0 && h<24 ? h : null;
+    }
+
+    m=s.match(/^(\d{1,2})(\d{2})(?:\d{2})?$/);
+    if(m){
+      const h=Number(m[1]), mi=Number(m[2]);
+      return h>=0 && h<24 && mi>=0 && mi<60 ? h : null;
+    }
+
+    return null;
+  }
+
+  function dateLabel(k){
+    if(!k) return '-';
+    const p=k.split('-');
+    return p.length===3 ? p[2]+'-'+p[1]+'-'+p[0] : k;
+  }
+
+  function draw(canvas, rows, peakHour){
+    if(!canvas) return;
+
+    const rect=canvas.getBoundingClientRect();
+    const dpr=window.devicePixelRatio||1;
+    const w=Math.max(320, Math.floor(rect.width||320));
+    const h=330;
+    canvas.width=w*dpr;
+    canvas.height=h*dpr;
+    canvas.style.height=h+'px';
+
+    const c=canvas.getContext('2d');
+    c.setTransform(dpr,0,0,dpr,0,0);
+    c.clearRect(0,0,w,h);
+
+    const pad={l:42,r:24,t:38,b:58};
+    const cw=w-pad.l-pad.r;
+    const ch=h-pad.t-pad.b;
+    const vals=rows.map(r=>Number(r.count)||0);
+    const maxVal=Math.max(1,...vals);
+    const top=Math.max(2,Math.ceil(maxVal/2)*2);
+
+    const xAt=i => rows.length===1 ? pad.l+cw/2 : pad.l+(cw/(rows.length-1))*i;
+    const yAt=v => pad.t+ch-(v/top)*ch;
+
+    // Background grid
+    c.font='12px system-ui, -apple-system, sans-serif';
+    c.textAlign='right';
+    c.textBaseline='middle';
+    c.fillStyle='#7f8aa0';
+    c.strokeStyle='rgba(148,163,184,.13)';
+    c.lineWidth=1;
+
+    for(let i=0;i<=4;i++){
+      const value=top*i/4;
+      const y=yAt(value);
+      c.beginPath();
+      c.setLineDash([4,6]);
+      c.moveTo(pad.l,y);
+      c.lineTo(w-pad.r,y);
+      c.stroke();
+      c.setLineDash([]);
+      c.fillText(String(Math.round(value)),pad.l-10,y);
+    }
+
+    // Smooth path
+    const pts=rows.map((r,i)=>({x:xAt(i),y:yAt(Number(r.count)||0),v:Number(r.count)||0,h:r.hour}));
+    const smoothPath=(ctx, points)=>{
+      if(!points.length)return;
+      ctx.beginPath();
+      ctx.moveTo(points[0].x,points[0].y);
+      for(let i=1;i<points.length;i++){
+        const p0=points[i-1],p1=points[i];
+        const mx=(p0.x+p1.x)/2;
+        ctx.bezierCurveTo(mx,p0.y,mx,p1.y,p1.x,p1.y);
+      }
+    };
+
+    // Area gradient
+    const area=c.createLinearGradient(0,pad.t,0,pad.t+ch);
+    area.addColorStop(0,'rgba(255,153,0,.28)');
+    area.addColorStop(.55,'rgba(255,176,0,.12)');
+    area.addColorStop(1,'rgba(24,25,27,0)');
+
+    smoothPath(c,pts);
+    c.lineTo(pts[pts.length-1].x,pad.t+ch);
+    c.lineTo(pts[0].x,pad.t+ch);
+    c.closePath();
+    c.fillStyle=area;
+    c.fill();
+
+    // Glow + line
+    smoothPath(c,pts);
+    c.strokeStyle='rgba(255,153,0,.16)';
+    c.lineWidth=10;
+    c.lineCap='round';
+    c.lineJoin='round';
+    c.stroke();
+
+    smoothPath(c,pts);
+    const line=c.createLinearGradient(pad.l,0,w-pad.r,0);
+    line.addColorStop(0,'#ffb000');
+    line.addColorStop(.5,'#ff9800');
+    line.addColorStop(1,'#ffd166');
+    c.strokeStyle=line;
+    c.lineWidth=4;
+    c.stroke();
+
+    // X axis labels
+    c.font='12px system-ui, -apple-system, sans-serif';
+    c.fillStyle='#9aa5b8';
+    c.textAlign='center';
+    c.textBaseline='top';
+
+    rows.forEach((r,i)=>{
+      const x=xAt(i);
+      c.fillText(String(r.hour).padStart(2,'0')+':00',x,h-pad.b+15);
+    });
+
+    // Points and values
+    pts.forEach((p,i)=>{
+      const isPeak=p.h===peakHour;
+      c.beginPath();
+      c.fillStyle='#0b1020';
+      c.arc(p.x,p.y,isPeak?7:6,0,Math.PI*2);
+      c.fill();
+
+      c.beginPath();
+      c.fillStyle=isPeak?'#ffb000':'#ff9f00';
+      c.arc(p.x,p.y,isPeak?4.5:3.5,0,Math.PI*2);
+      c.fill();
+
+      c.font='700 12px system-ui, -apple-system, sans-serif';
+      c.fillStyle=isPeak?'#ffd166':'#f3f4f6';
+      c.textAlign='center';
+      c.textBaseline='bottom';
+      c.fillText(String(p.v),p.x,p.y-12);
+    });
+  }
+
+  function render(result, totalTransactions){
+    let host=document.getElementById('hourlyDashboard');
+
+    if(!host){
+      host=document.createElement('section');
+      host.id='hourlyDashboard';
+      const target=document.querySelector('main')||document.body;
+      target.appendChild(host);
+    }
+
+    const dates=Object.keys(result).sort();
+    const latest=dates[dates.length-1];
+
+    if(!latest){
+      host.innerHTML='';
+      return;
+    }
+
+    const rows=(result[latest]||[]).sort((a,b)=>a.hour-b.hour);
+    if(!rows.length){
+      host.innerHTML='';
+      return;
+    }
+
+    const first=rows[0].hour;
+    const last=rows[rows.length-1].hour;
+    const total=rows.reduce((s,r)=>s+(Number(r.count)||0),0);
+    const txTotal=Number(totalTransactions)||0;
+    const salesMember=txTotal>0 ? (total/txTotal*100) : 0;
+    const peakRow=rows.reduce((a,b)=>(Number(b.count)||0)>(Number(a.count)||0)?b:a,rows[0]);
+    const peakHour=peakRow.hour;
+    const peakCount=Number(peakRow.count)||0;
+    const avg=rows.length ? total/rows.length : 0;
+
+    const maxForBar=Math.max(1,...rows.map(r=>Number(r.count)||0));
+
+    host.innerHTML=`
+      <div class="mh-shell">
+        <div class="mh-head">
+          <div class="mh-brand">
+            <div class="mh-icon">👥</div>
+            <div>
+              <div class="mh-title">Sales Member</div>
+              <div class="mh-subtitle">Analitik member berdasarkan waktu transaksi</div>
+            </div>
+          </div>
+          <div class="mh-date">
+            <span class="mh-calendar">▣</span>
+            <div>
+              <strong>${dateLabel(latest)}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="mh-stats">
+          <div class="mh-stat mh-stat-main">
+            <div class="mh-stat-label">TOTAL MEMBER</div>
+            <div class="mh-stat-value">${total}</div>
+            <div class="mh-stat-badge">👥</div>
+          </div>
+
+          <div class="mh-stat mh-stat-tx">
+            <div class="mh-stat-label">TOTAL TRANSAKSI</div>
+            <div class="mh-stat-value">${txTotal}</div>
+            <div class="mh-stat-badge">🧾</div>
+          </div>
+
+          <div class="mh-stat mh-sales-stat">
+            <div class="mh-stat-label">SALES MEMBER</div>
+            <div class="mh-stat-value mh-purple">${salesMember.toFixed(2)}%</div>
+            <div class="mh-stat-note">${total} member dari ${txTotal} transaksi</div>
+            <div class="mh-mini-icon purple">%</div>
+          </div>
+        </div>
+
+        <div class="mh-chart-card">
+          <div class="mh-chart-head">
+            <div>
+              <div class="mh-chart-title"><span class="mh-chart-icon">⌁</span> Grafik Member Per Jam</div>
+              <div class="mh-chart-desc">Periode sales member: <b>${String(first).padStart(2,'0')}:00 - ${String(last).padStart(2,'0')}:00</b></div>
+            </div>
+            <div class="mh-pill mh-live"><span class="mh-live-dot"></span> Live Analitik</div>
+          </div>
+          <div class="mh-canvas-wrap"><canvas id="hdMember" class="hourly-canvas"></canvas></div>
+        </div>
+
+        <div class="mh-detail">
+          <div class="mh-detail-title"><span>▣</span> Detail Member per Jam</div>
+          <div class="mh-detail-grid">
+            ${rows.map(r=>{
+              const count=Number(r.count)||0;
+              const pct=total ? (count/total*100) : 0;
+              const isPeak=r.hour===peakHour;
+              return `
+                <div class="mh-row ${isPeak?'peak':''}">
+                  <div class="mh-hour">${String(r.hour).padStart(2,'0')}:00</div>
+                  <div class="mh-count">${count}</div>
+                  <div class="mh-bar"><i style="width:${Math.max(count?2:0,(count/maxForBar)*100)}%"></i></div>
+                  <div class="mh-pct">${pct.toFixed(1)}%</div>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>
+
+        <div class="mh-info">
+          <span>ⓘ</span>
+          <div><b>Data diambil otomatis</b><small>Menampilkan tanggal terbaru dan hanya rentang jam yang memiliki data member.</small></div>
+        </div>
+      </div>`;
+
+    // Dashboard Sales Member UTUH (kartu + grafik + detail) ditempatkan
+    // tepat di atas Peraturan Aplikasi setelah database berhasil diproses.
+    try{
+      if(window.__moveSalesMemberAboveRules) window.__moveSalesMemberAboveRules();
+    }catch(e){ console.warn('Posisi Sales Member:',e); }
+
+    requestAnimationFrame(()=>{
+      draw(document.getElementById('hdMember'),rows,peakHour);
+    });
+
+    if(!window.__memberHourlyResizeBound){
+      window.__memberHourlyResizeBound=true;
+      window.addEventListener('resize',()=>{
+        const cv=document.getElementById('hdMember');
+        if(cv){
+          const d=window.__memberHourlyLast;
+          if(d) draw(cv,d.rows,d.peakHour);
+        }
+      },{passive:true});
+    }
+    window.__memberHourlyLast={rows,peakHour};
+  }
+
+  window.buildHourlyDashboard=async function(sources,SQL){
+    const byDate={};
+    const txTotals={};
+
+    const add=(d,h)=>{
+      if(!byDate[d]) byDate[d]=new Map();
+      if(!byDate[d].has(h)) byDate[d].set(h,{hour:h,count:0});
+      return byDate[d].get(h);
+    };
+
+    for(const source of (sources||[])){
+      let db=null;
+
+      try{
+        db=new SQL.Database(source.bytes);
+
+        const tables=(db.exec(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+        )[0]?.values||[]).map(r=>String(r[0]));
+
+        const txSale=tables.find(t=>t.toLowerCase()==='tx_tsale');
+
+        // Total transaksi per tanggal untuk menghitung Sales Member.
+        if(txSale){
+          const csTx=cols(db,txSale);
+          const dcTx=csTx.find(c=>norm(c)==='datetx');
+          if(dcTx){
+            try{
+              const qTx=db.exec(
+                'SELECT '+escIdent(dcTx)+', COUNT(*) FROM '+escIdent(txSale)+
+                ' GROUP BY '+escIdent(dcTx)
+              )[0];
+              for(const row of (qTx?.values||[])){
+                const d=dateKey(row[0]);
+                if(d) txTotals[d]=(txTotals[d]||0)+(Number(row[1])||0);
+              }
+            }catch(e){ console.warn('Total transaksi per tanggal:',e); }
+          }
+        }
+
+        /*
+         * PRIORITAS 1: tx_tsale
+         * cust_id adalah ID member yang sebenarnya pada database ini.
+         * time_tx adalah waktu transaksi.
+         */
+        if(txSale){
+          const cs=cols(db,txSale);
+          const findCol=n=>cs.find(c=>norm(c)===n);
+
+          const dc=findCol('datetx');
+          const tc=findCol('timetx');
+          const mc=findCol('custid');
+          const bill=findCol('faktur');
+
+          if(dc && tc && mc){
+            const select=[dc,tc,mc,bill].filter(Boolean).map(escIdent).join(',');
+            const q=db.exec(
+              'SELECT '+select+' FROM '+escIdent(txSale)
+            )[0];
+
+            const seen=new Set();
+
+            for(const row of (q?.values||[])){
+              let i=0;
+              const d=dateKey(row[i++]);
+              const t=row[i++];
+              const m=row[i++];
+              const b=bill ? row[i++] : null;
+
+              if(!d || !validMember(m)) continue;
+
+              const h=getHour(t);
+              if(h===null) continue;
+
+              /*
+               * Satu faktur = satu member visit.
+               * Ini mencegah penghitungan berulang.
+               */
+              const key=d+'|'+String(b??'')+'|'+String(m).trim();
+
+              if(seen.has(key)) continue;
+              seen.add(key);
+
+              add(d,h).count++;
+            }
+          }
+        }
+
+        /*
+         * PRIORITAS 2: jika tx_tsale tidak menghasilkan data member,
+         * gunakan tx_trans dengan member + member_time + bill_no.
+         */
+        const hasAny=Object.keys(byDate).length>0;
+
+        if(!hasAny){
+          const txTrans=tables.find(t=>t.toLowerCase()==='tx_trans');
+
+          if(txTrans){
+            const cs=cols(db,txTrans);
+            const findCol=n=>cs.find(c=>norm(c)===n);
+
+            const dc=findCol('datetx');
+            const tc=findCol('membertime');
+            const mc=findCol('member');
+            const bill=findCol('billno');
+
+            if(dc && tc && mc){
+              const select=[dc,tc,mc,bill].filter(Boolean).map(escIdent).join(',');
+              const q=db.exec(
+                'SELECT '+select+' FROM '+escIdent(txTrans)
+              )[0];
+
+              const seen=new Set();
+
+              for(const row of (q?.values||[])){
+                let i=0;
+                const d=dateKey(row[i++]);
+                const t=row[i++];
+                const m=row[i++];
+                const b=bill ? row[i++] : null;
+
+                if(!d || !validMember(m)) continue;
+
+                const h=getHour(t);
+                if(h===null) continue;
+
+                const key=d+'|'+String(b??'')+'|'+String(m).trim();
+
+                if(seen.has(key)) continue;
+                seen.add(key);
+
+                add(d,h).count++;
+              }
+            }
+          }
+        }
+
+      }catch(e){
+        console.warn('Member per jam:',e);
+      }finally{
+        try{ if(db) db.close(); }catch(_){}
+      }
+    }
+
+    const normalized={};
+
+    Object.keys(byDate).forEach(d=>{
+      const hours=[...byDate[d].values()]
+        .filter(x=>x.count>0)
+        .sort((a,b)=>a.hour-b.hour);
+
+      if(!hours.length) return;
+
+      /*
+       * Diagram hanya dari jam member pertama sampai jam member terakhir.
+       * Jam kosong di tengah tetap ditampilkan sebagai 0.
+       */
+      const first=hours[0].hour;
+      const last=hours[hours.length-1].hour;
+      const map=new Map(hours.map(x=>[x.hour,x]));
+
+      normalized[d]=[];
+      for(let h=first;h<=last;h++){
+        normalized[d].push({
+          hour:h,
+          count:map.get(h)?.count||0
+        });
+      }
+    });
+
+    render(normalized, txTotals[Object.keys(normalized).sort().pop()]||0);
+  };
+})();
+</script>
+
+
+
+
+
+<style id="salesMemberClickStyle">
+.sm-member-modal{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.68);backdrop-filter:blur(7px)}
+.sm-member-modal.show{display:flex;animation:smModalIn .22s ease both}
+.sm-member-dialog{width:min(520px,100%);max-height:min(78vh,680px);overflow:auto;border:1px solid rgba(255,170,0,.25);border-radius:22px;background:linear-gradient(180deg,#202124,#18191b);box-shadow:0 25px 80px rgba(0,0,0,.5);padding:18px;color:#f4f4f5}
+.sm-member-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px}.sm-member-title{font-size:21px;font-weight:900}.sm-member-sub{color:#9298a4;font-size:12px;margin-top:4px}.sm-member-close{width:38px;height:38px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:#27282b;color:#fff;font-size:20px;cursor:pointer}.sm-member-list{display:grid;gap:8px}.sm-member-item{display:flex;align-items:center;gap:11px;padding:11px 12px;border:1px solid rgba(255,255,255,.065);border-radius:13px;background:#1d1e20}.sm-member-no{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:rgba(255,153,0,.12);color:#ffad19;font-size:12px;font-weight:900;flex:0 0 auto}.sm-member-name{font-weight:750;font-size:14px;word-break:break-word}.sm-member-id{display:block;color:#a1a7b1;font-size:11px;margin-top:4px;line-height:1.45}.sm-member-empty{padding:18px;text-align:center;color:#9ba1ad;border:1px dashed rgba(255,255,255,.1);border-radius:14px}
+@keyframes smModalIn{from{opacity:0}to{opacity:1}}
+#hdMember{cursor:pointer}
+</style>
+
+<script id="salesMemberChartMemberDetail">
+(function(){
+  const originalBuild=window.buildHourlyDashboard;
+  if(typeof originalBuild!=='function') return;
+
+  const norm=v=>String(v??'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const esc=s=>'"'+String(s).replace(/"/g,'""')+'"';
+  const valid=v=>{
+    if(v===null||v===undefined)return false;
+    const x=String(v).trim().toLowerCase();
+    return x!==''&&x!=='0'&&x!=='-'&&x!=='null'&&x!=='undefined';
+  };
+  const parseDate=v=>{
+    const s=String(v??'').trim();
+    let m=s.match(/(20\d{2})[-\/](\d{1,2})[-\/](\d{1,2})/);
+    if(m)return m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0');
+    m=s.match(/(\d{1,2})[-\/](\d{1,2})[-\/](20\d{2})/);
+    return m?m[3]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0'):null;
+  };
+  const hour=v=>{
+    const s=String(v??'').trim();
+    let m=s.match(/(?:^|\s|T)(\d{1,2}):(\d{2})(?::\d{2})?/);
+    if(m){const h=+m[1];return h>=0&&h<24?h:null;}
+    m=s.match(/^(\d{1,2})(\d{2})(?:\d{2})?$/);
+    if(m){const h=+m[1],mi=+m[2];return h>=0&&h<24&&mi<60?h:null;}
+    return null;
+  };
+  const fullTime=v=>{
+    const s=String(v??'').trim();
+    let m=s.match(/(?:^|\s|T)(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    if(m){
+      const h=+m[1],mi=+m[2],se=m[3]===undefined?null:+m[3];
+      if(h>=0&&h<24&&mi>=0&&mi<60&&(se===null||(se>=0&&se<60))){
+        return String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0')+(se===null?'':':'+String(se).padStart(2,'0'));
+      }
+    }
+    m=s.match(/^(\d{1,2})(\d{2})(\d{2})?$/);
+    if(m){
+      const h=+m[1],mi=+m[2],se=m[3]===undefined?null:+m[3];
+      if(h>=0&&h<24&&mi<60&&(se===null||se<60)){
+        return String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0')+(se===null?'':':'+String(se).padStart(2,'0'));
+      }
+    }
+    const h=hour(v);
+    return h===null?'':String(h).padStart(2,'0')+':00';
+  };
+  function getCols(db,t){try{return (db.exec('PRAGMA table_info('+esc(t)+')')[0]?.values||[]).map(r=>String(r[1]||''));}catch(e){return[]}}
+
+  function ensureModal(){
+    let m=document.getElementById('smMemberModal');
+    if(m)return m;
+    m=document.createElement('div');m.id='smMemberModal';m.className='sm-member-modal';
+    m.innerHTML='<div class="sm-member-dialog" role="dialog" aria-modal="true"><div class="sm-member-top"><div><div id="smMemberTitle" class="sm-member-title">Detail Member</div><div id="smMemberSub" class="sm-member-sub"></div></div><button type="button" id="smMemberClose" class="sm-member-close">×</button></div><div id="smMemberList" class="sm-member-list"></div></div>';
+    document.body.appendChild(m);
+    const close=()=>m.classList.remove('show');
+    m.addEventListener('click',e=>{if(e.target===m)close()});
+    m.querySelector('#smMemberClose').addEventListener('click',close);
+    return m;
+  }
+
+  function showDetail(row){
+    const m=ensureModal();
+    const names=Array.isArray(row.members)?row.members:[];
+    const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const jam=String(row.hour).padStart(2,'0')+':00';
+    m.querySelector('#smMemberTitle').textContent='Detail Member • '+jam;
+    m.querySelector('#smMemberSub').textContent=(row.date?'Tanggal '+row.date+' • ':'')+(names.length||row.count||0)+' member pada rentang '+jam+'–'+String(row.hour).padStart(2,'0')+':59';
+    const list=m.querySelector('#smMemberList');
+    if(!names.length){
+      list.innerHTML='<div class="sm-member-empty">Nama member tidak ditemukan pada database untuk jam ini.</div>';
+    }else{
+      list.innerHTML=names.map((x,i)=>{
+        const times=Array.isArray(x.times)&&x.times.length ? x.times.join(', ') : jam;
+        const rawName=String(x.name??'').trim();
+        const name=rawName && rawName!==String(x.id).trim() ? rawName : 'Nama tidak tersedia';
+        return '<div class="sm-member-item"><div class="sm-member-no">'+(i+1)+'</div><div><div class="sm-member-name">'+safe(name)+'</div><span class="sm-member-id">ID: '+safe(x.id)+' • Jam transaksi: '+safe(times)+'</span></div></div>';
+      }).join('');
+    }
+    m.classList.add('show');
+  }
+
+  function bindChart(rows){
+    const cv=document.getElementById('hdMember');
+    if(!cv)return;
+    if(cv.__memberClickBound)return;
+    cv.__memberClickBound=true;
+    cv.addEventListener('click',e=>{
+      const rect=cv.getBoundingClientRect();
+      const x=e.clientX-rect.left;
+      const w=rect.width||320;
+      const padL=42,padR=24,cw=Math.max(1,w-padL-padR);
+      let idx=rows.length===1?0:Math.round((x-padL)/cw*(rows.length-1));
+      idx=Math.max(0,Math.min(rows.length-1,idx));
+      const nearestX=rows.length===1?padL+cw/2:padL+(cw/(rows.length-1))*idx;
+      if(Math.abs(x-nearestX)>Math.max(24,cw/rows.length*.55))return;
+      showDetail(rows[idx]);
+    });
+  }
+
+  async function collect(sources,SQL){
+    const byDate={};
+    const lookup=new Map();
+    const allTablesMemberCandidates=[];
+    for(const source of (sources||[])){
+      let db=null;
+      try{
+        db=new SQL.Database(source.bytes);
+        const tables=(db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")[0]?.values||[]).map(r=>String(r[0]));
+        // Cari tabel yang mempunyai pasangan kolom ID member/customer + nama member/customer.
+        for(const t of tables){
+          const cs=getCols(db,t); const ids=cs.filter(c=>/^(custid|memberid|memberno|membernumber|membercode|customerno|customercode|cardid|cardno|cardnumber)$/i.test(norm(c)) || /member.*id|cust.*id|card.*id/i.test(norm(c)));
+          const names=cs.filter(c=>/^(membername|customername|custname|nama_member|namamember|nama_customer|namacustomer|name)$/i.test(norm(c)) || /member.*name|customer.*name|cust.*name/i.test(norm(c)));
+          if(ids.length&&names.length) allTablesMemberCandidates.push({db,t,idCol:ids[0],nameCol:names[0]});
+        }
+        const tx=tables.find(t=>t.toLowerCase()==='tx_tsale');
+        if(tx){
+          const cs=getCols(db,tx), find=n=>cs.find(c=>norm(c)===n);
+          const dc=find('datetx'),tc=find('timetx'),mc=find('custid'),bc=find('faktur');
+          if(dc&&tc&&mc){
+            const q=db.exec('SELECT '+[dc,tc,mc,bc].filter(Boolean).map(esc).join(',')+' FROM '+esc(tx))[0];
+            const seen=new Set();
+            for(const row of (q?.values||[])){
+              let k=0;const d=parseDate(row[k++]),tt=row[k++],id=row[k++],bill=bc?row[k++]:'';const h=hour(tt);
+              if(!d||h===null||!valid(id))continue;
+              if(!byDate[d])byDate[d]=new Map();
+              if(!byDate[d].has(h))byDate[d].set(h,{hour:h,count:0,ids:new Set(),times:new Map()});
+              const key=d+'|'+String(bill??'')+'|'+String(id).trim(); if(seen.has(key))continue;seen.add(key);
+              const bucket=byDate[d].get(h);
+              const memberId=String(id).trim();
+              bucket.count++; bucket.ids.add(memberId);
+              if(!bucket.times.has(memberId)) bucket.times.set(memberId,[]);
+              const tm=fullTime(tt);
+              if(tm && !bucket.times.get(memberId).includes(tm)) bucket.times.get(memberId).push(tm);
+            }
+          }
+        }
+      }catch(e){console.warn('Detail nama member:',e)}
+      finally{try{db?.close()}catch(_){}
+      }
+    }
+    // Bangun lookup nama dari tabel kandidat. Karena tiap entry menyimpan DB sendiri,
+    // query dilakukan lagi dengan DB yang sama melalui sources agar aman setelah close.
+    for(const source of (sources||[])){
+      let db=null;
+      try{
+        db=new SQL.Database(source.bytes);
+        const tables=(db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")[0]?.values||[]).map(r=>String(r[0]));
+        for(const t of tables){
+          const cs=getCols(db,t);
+          const idCol=cs.find(c=>/^(custid|memberid|memberno|membernumber|membercode|customerno|customercode|cardid|cardno|cardnumber)$/i.test(norm(c)) || /member.*id|cust.*id|card.*id/i.test(norm(c)));
+          const nameCol=cs.find(c=>/^(membername|customername|custname|nama_member|namamember|nama_customer|namacustomer|name)$/i.test(norm(c)) || /member.*name|customer.*name|cust.*name/i.test(norm(c)));
+          if(!idCol||!nameCol)continue;
+          try{
+            const q=db.exec('SELECT '+esc(idCol)+','+esc(nameCol)+' FROM '+esc(t))[0];
+            for(const r of (q?.values||[])) if(valid(r[0])&&valid(r[1])) lookup.set(String(r[0]).trim().toLowerCase(),String(r[1]).trim());
+          }catch(e){}
+        }
+      }catch(e){}
+      finally{try{db?.close()}catch(_){}
+      }
+    }
+    const dates=Object.keys(byDate).sort();const latest=dates[dates.length-1];
+    if(!latest)return [];
+    const hours=[...byDate[latest].values()].sort((a,b)=>a.hour-b.hour);
+    if(!hours.length)return [];
+    const first=hours[0].hour,last=hours[hours.length-1].hour;const map=new Map(hours.map(x=>[x.hour,x]));const out=[];
+    for(let h=first;h<=last;h++){
+      const x=map.get(h)||{hour:h,count:0,ids:new Set(),times:new Map()};
+      const ids=[...(x.ids||[])];
+      out.push({
+        hour:h,
+        date:latest,
+        count:Number(x.count)||0,
+        members:ids.map(id=>({
+          id,
+          name:lookup.get(id.toLowerCase())||id,
+          times:(x.times instanceof Map ? (x.times.get(id)||[]) : [])
+        })).sort((a,b)=>String(a.name).localeCompare(String(b.name),'id'))
+      });
+    }
+    return out;
+  }
+
+  window.buildHourlyDashboard=async function(sources,SQL){
+    await originalBuild(sources,SQL);
+    try{
+      const detailed=await collect(sources,SQL);
+      const latestRows=window.__memberHourlyLast?.rows||[];
+      const byHour=new Map(detailed.map(r=>[r.hour,r.members]));
+      latestRows.forEach(r=>{r.members=byHour.get(r.hour)||[]});
+      window.__memberHourlyLast.rows=latestRows;
+      requestAnimationFrame(()=>bindChart(latestRows));
+    }catch(e){console.warn('Detail klik member:',e)}
+  };
+})();
+</script>
+
+
+<style id="salesMemberAccurateDetailStyle">
+.sm-member-name{font-weight:800}
+.sm-member-id{color:#aeb5c3}
+.sm-member-item{transition:transform .18s ease,border-color .18s ease,background .18s ease}
+.sm-member-item:hover{transform:translateX(2px);border-color:rgba(255,170,0,.20);background:#222326}
+</style>
+
+<script id="salesMemberAccurateDetail">
+(function(){
+  const previousBuild = window.buildHourlyDashboard;
+  if(typeof previousBuild !== 'function') return;
+
+  const norm=v=>String(v??'').trim().toLowerCase();
+  const esc=s=>'"'+String(s).replace(/"/g,'""')+'"';
+
+  function parseDate(v){
+    const s=String(v??'').trim();
+    let m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+    if(m) return m[3]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');
+    m=s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+    if(m) return m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0');
+    return null;
+  }
+
+  function getHour(v){
+    const s=String(v??'').trim();
+    let m=s.match(/(?:^|\s|T)(\d{1,2}):(\d{2})(?::\d{2})?/);
+    if(m) return (+m[1]>=0&&+m[1]<24)?+m[1]:null;
+    m=s.match(/^(\d{1,2})(\d{2})(?:\d{2})?$/);
+    if(m) return (+m[1]>=0&&+m[1]<24&&+m[2]<60)?+m[1]:null;
+    return null;
+  }
+
+  function fullTime(v){
+    const s=String(v??'').trim();
+    let m=s.match(/(?:^|\s|T)(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    if(m){
+      const h=+m[1], mi=+m[2], se=m[3]==null?null:+m[3];
+      if(h<24&&mi<60&&(se===null||se<60))
+        return String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0')+(se===null?'':':'+String(se).padStart(2,'0'));
+    }
+    m=s.match(/^(\d{1,2})(\d{2})(\d{2})?$/);
+    if(m){
+      const h=+m[1], mi=+m[2], se=m[3]==null?null:+m[3];
+      if(h<24&&mi<60&&(se===null||se<60))
+        return String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0')+(se===null?'':':'+String(se).padStart(2,'0'));
+    }
+    return '';
+  }
+
+  function valid(v){
+    if(v===null||v===undefined)return false;
+    const s=String(v).trim().toLowerCase();
+    return s!==''&&s!=='0'&&s!=='null'&&s!=='undefined'&&s!=='-';
+  }
+
+  async function collectAccurate(sources,SQL){
+    const names=new Map();
+    const byDate={};
+
+    for(const source of (sources||[])){
+      let db=null;
+      try{
+        db=new SQL.Database(source.bytes);
+
+        // Relasi NAMA MEMBER yang benar pada database ini:
+        // tx_tsale.cust_id -> tx_usi.no_member -> tx_usi.member_name
+        const hasUsi=!!db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='tx_usi'").length;
+        if(hasUsi){
+          const q=db.exec(`
+            SELECT no_member, member_name
+            FROM tx_usi
+            WHERE TRIM(COALESCE(no_member,'')) <> ''
+              AND TRIM(COALESCE(member_name,'')) <> ''
+          `)[0];
+
+          for(const r of (q?.values||[])){
+            const id=String(r[0]??'').trim();
+            const name=String(r[1]??'').trim();
+            if(valid(id)&&valid(name)) names.set(norm(id),name);
+          }
+        }
+
+        const hasSale=!!db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='tx_tsale'").length;
+        if(!hasSale) continue;
+
+        // tx_tsale adalah sumber jam + cust_id yang dipakai grafik Sales Member.
+        const q=db.exec(`
+          SELECT date_tx, time_tx, faktur, cust_id
+          FROM tx_tsale
+          WHERE TRIM(COALESCE(cust_id,'')) <> ''
+            AND TRIM(COALESCE(cust_id,'')) <> '0'
+            AND TRIM(COALESCE(time_tx,'')) <> ''
+        `)[0];
+
+        const seen=new Set();
+        for(const r of (q?.values||[])){
+          const d=parseDate(r[0]);
+          const tm=fullTime(r[1]);
+          const id=String(r[3]??'').trim();
+          const faktur=String(r[2]??'').trim();
+          const h=getHour(tm);
+
+          if(!d||!tm||h===null||!valid(id)) continue;
+
+          // Satu transaksi dihitung satu member, meskipun tx_tsale memiliki
+          // lebih dari satu baris terkait transaksi.
+          const unique=d+'|'+faktur+'|'+id;
+          if(seen.has(unique)) continue;
+          seen.add(unique);
+
+          if(!byDate[d]) byDate[d]=new Map();
+          if(!byDate[d].has(h)){
+            byDate[d].set(h,{hour:h,count:0,members:new Map()});
+          }
+
+          const bucket=byDate[d].get(h);
+          if(!bucket.members.has(id)){
+            bucket.members.set(id,{
+              id,
+              name:names.get(norm(id)) || '',
+              times:[]
+            });
+            bucket.count++;
+          }
+
+          const member=bucket.members.get(id);
+          if(!member.times.includes(tm)) member.times.push(tm);
+
+          // Nama dapat ditemukan setelah cache dibangun; pastikan selalu di-refresh.
+          member.name=names.get(norm(id)) || member.name || '';
+        }
+      }catch(e){
+        console.warn('Sales Member: relasi nama member:',e);
+      }finally{
+        try{db?.close()}catch(_){}
+      }
+    }
+
+    const dates=Object.keys(byDate).sort();
+    const latest=dates[dates.length-1];
+    if(!latest) return [];
+
+    const hours=[...byDate[latest].values()].sort((a,b)=>a.hour-b.hour);
+    if(!hours.length) return [];
+
+    const first=hours[0].hour, last=hours[hours.length-1].hour;
+    const map=new Map(hours.map(x=>[x.hour,x]));
+    const result=[];
+
+    for(let h=first;h<=last;h++){
+      const bucket=map.get(h);
+      const members=bucket ? [...bucket.members.values()] : [];
+      members.forEach(x=>x.times.sort());
+
+      result.push({
+        hour:h,
+        date:latest,
+        count:bucket?.count||0,
+        members:members.sort((a,b)=>{
+          const an=a.name||a.id, bn=b.name||b.id;
+          return String(an).localeCompare(String(bn),'id');
+        })
+      });
+    }
+    return result;
+  }
+
+  window.buildHourlyDashboard=async function(sources,SQL){
+    await previousBuild(sources,SQL);
+
+    try{
+      const detailed=await collectAccurate(sources,SQL);
+      const rows=window.__memberHourlyLast?.rows;
+      if(!Array.isArray(rows)) return;
+
+      const byHour=new Map(detailed.map(r=>[r.hour,r]));
+
+      // Mutasi objek rows yang sama sehingga handler klik grafik V23
+      // otomatis membaca nama member yang sudah benar.
+      rows.forEach(r=>{
+        const d=byHour.get(r.hour);
+        r.date=d?.date||'';
+        r.count=d?.count||0;
+        r.members=d?.members||[];
+      });
+
+      window.__memberHourlyLast.rows=rows;
+
+      // Jika modal sudah terbuka dari klik awal, refresh isinya.
+      const modal=document.getElementById('smMemberModal');
+      if(modal?.classList.contains('show')){
+        const title=document.getElementById('smMemberTitle');
+        const match=title?.textContent?.match(/(\d{2}:\d{2})$/);
+        if(match){
+          const hr=parseInt(match[1],10);
+          const row=rows.find(x=>x.hour===hr);
+          if(row && typeof window.__salesMemberShowDetail==='function'){
+            window.__salesMemberShowDetail(row);
+          }
+        }
+      }
+    }catch(e){
+      console.warn('Sales Member detail nama:',e);
+    }
+  };
+})();
+</script>
+
+
+<script id="salesMemberV20Position">
+(function(){
+  function getRulesBlock(){
+    const btn=document.querySelector('.rules-btn');
+    if(!btn) return null;
+    // Cari container terdekat yang benar-benar membungkus kartu Peraturan Aplikasi.
+    let el=btn;
+    for(let i=0;i<6 && el;i++,el=el.parentElement){
+      const t=(el.innerText||'').toLowerCase();
+      if(t.includes('peraturan aplikasi')) return el;
+    }
+    return btn.parentElement||btn;
+  }
+
+  window.__moveSalesMemberAboveRules=function(){
+    const dash=document.getElementById('hourlyDashboard');
+    const rules=getRulesBlock();
+    if(!dash||!rules||!rules.parentNode) return false;
+
+    // Jika sudah tepat berada di atas Peraturan Aplikasi, jangan
+    // memindahkan lagi. Ini mencegah MutationObserver melakukan loop.
+    if(dash.parentNode === rules.parentNode && dash.nextElementSibling === rules){
+      return true;
+    }
+
+    rules.parentNode.insertBefore(dash,rules);
+    return true;
+  };
+
+  // Jika dashboard dibuat setelah pemilihan database, observer akan menangkapnya.
+  const obs=new MutationObserver(function(){
+    const dash=document.getElementById('hourlyDashboard');
+    if(!dash) return;
+    window.__moveSalesMemberAboveRules();
+  });
+  function start(){
+    if(document.body) obs.observe(document.body,{childList:true,subtree:true});
+    window.__moveSalesMemberAboveRules();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start);
+  else start();
+})();
+</script>
+
 </body>
 </html>
 <style>
@@ -2442,3 +3444,169 @@ document.addEventListener('DOMContentLoaded',()=>{
   new MutationObserver(hideWA).observe(document.body,{childList:true,subtree:true});
 });
 </script>
+
+
+
+
+<style id="memberHourlyModernStyle">
+#hourlyDashboard{
+  margin:20px auto 28px;
+  width:min(1120px,calc(100% - 24px));
+  box-sizing:border-box;
+  animation:mhFadeUp .65s cubic-bezier(.22,1,.36,1) both
+}
+.mh-shell{
+  color:#f4f4f5;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:24px;
+  padding:20px;
+  background:
+    radial-gradient(circle at 50% -20%,rgba(255,153,0,.07),transparent 35%),
+    linear-gradient(180deg,#1c1d1f 0%,#18191b 100%);
+  box-shadow:0 18px 45px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.025);
+  overflow:hidden;
+}
+.mh-head{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:17px
+}
+.mh-brand{display:flex;align-items:center;gap:12px}
+.mh-icon{
+  width:48px;height:48px;border-radius:15px;display:grid;place-items:center;font-size:25px;
+  background:linear-gradient(145deg,#ffb000,#ff8a00);
+  box-shadow:0 8px 22px rgba(255,145,0,.20);
+  animation:mhFloat 3.2s ease-in-out infinite
+}
+.mh-title{font-size:26px;font-weight:900;letter-spacing:-.55px}
+.mh-subtitle{margin-top:3px;color:#999da5;font-size:13px}
+.mh-date{
+  display:flex;align-items:center;gap:9px;min-width:178px;padding:10px 13px;
+  border:1px solid rgba(255,255,255,.07);border-radius:14px;background:#202124
+}
+.mh-calendar{font-size:20px;color:#ffab00}
+.mh-date strong{display:block;font-size:13px}.mh-date small{display:block;color:#858992;margin-top:2px}
+
+.mh-stats{
+  display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px
+}
+.mh-stat{
+  position:relative;min-height:112px;padding:17px;border-radius:18px;
+  border:1px solid rgba(255,255,255,.065);
+  background:linear-gradient(145deg,#202124,#1b1c1e);
+  overflow:hidden;
+  transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease;
+  animation:mhCardIn .6s cubic-bezier(.22,1,.36,1) both
+}
+.mh-stat:nth-child(2){animation-delay:.08s}
+.mh-stat:hover{transform:translateY(-3px);border-color:rgba(255,153,0,.28);box-shadow:0 10px 30px rgba(0,0,0,.20)}
+.mh-stat-main{border-color:rgba(255,153,0,.24)}
+.mh-sales-stat{border-color:rgba(255,153,0,.16)}
+.mh-stat:after{
+  content:"";position:absolute;left:-20%;bottom:-60px;width:140%;height:90px;
+  background:radial-gradient(ellipse,rgba(255,153,0,.07),transparent 65%);
+  pointer-events:none
+}
+.mh-stat-label{font-size:10px;font-weight:800;color:#9da1aa;letter-spacing:.65px}
+.mh-stat-value{margin-top:8px;font-size:32px;font-weight:900;letter-spacing:-.8px}
+.mh-stat-main .mh-stat-value{font-size:42px}
+.mh-stat-note{margin-top:5px;color:#858a94;font-size:11px}
+.mh-purple{color:#ffad19}
+.mh-stat-badge,.mh-mini-icon{
+  position:absolute;right:12px;top:12px;width:39px;height:39px;border-radius:12px;
+  display:grid;place-items:center;font-size:17px
+}
+.mh-stat-badge{background:rgba(255,153,0,.10);border:1px solid rgba(255,153,0,.22)}
+.mh-mini-icon.purple{color:#ffad19;background:rgba(255,153,0,.09)}
+
+.mh-chart-card,.mh-detail,.mh-info{
+  border:1px solid rgba(255,255,255,.065);
+  border-radius:19px;background:#1b1c1e
+}
+.mh-chart-card{
+  padding:18px;margin-bottom:13px;
+  animation:mhCardIn .7s .12s cubic-bezier(.22,1,.36,1) both
+}
+.mh-chart-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.mh-chart-title{font-size:19px;font-weight:900}
+.mh-chart-icon{
+  display:inline-grid;place-items:center;width:28px;height:28px;margin-right:6px;border-radius:8px;
+  background:rgba(255,153,0,.11);color:#ffad19
+}
+.mh-chart-desc{margin-top:4px;color:#858b96;font-size:12px}.mh-chart-desc b{color:#ffad19}
+.mh-pill{
+  padding:8px 11px;border:1px solid rgba(255,255,255,.07);border-radius:11px;
+  color:#aeb3bc;font-size:11px;background:#202124
+}
+.mh-live{display:flex;align-items:center;gap:7px}
+.mh-live-dot{
+  width:7px;height:7px;border-radius:50%;background:#42d392;
+  box-shadow:0 0 0 0 rgba(66,211,146,.5);animation:mhPulse 1.8s infinite
+}
+.mh-canvas-wrap{margin-top:8px;padding:4px 0 0}
+.hourly-canvas{display:block;width:100%;height:315px}
+.mh-chart-footer{
+  display:grid;grid-template-columns:repeat(3,1fr);margin-top:6px;padding:14px 3px;
+  border-top:1px solid rgba(255,255,255,.055)
+}
+.mh-chart-footer>div{text-align:center;border-right:1px solid rgba(255,255,255,.06)}
+.mh-chart-footer>div:last-child{border-right:0}
+.mh-chart-footer span{display:block;color:#858b96;font-size:11px}
+.mh-chart-footer strong{font-size:22px;color:#ffad19;margin:4px 3px 0 0}
+.mh-chart-footer em{font-style:normal;color:#7f858e;font-size:10px}
+
+.mh-detail{
+  padding:16px;margin-bottom:13px;
+  animation:mhCardIn .7s .18s cubic-bezier(.22,1,.36,1) both
+}
+.mh-detail-title{font-size:17px;font-weight:900;margin-bottom:10px}
+.mh-detail-title span{color:#ffad19;margin-right:6px}
+.mh-detail-grid{display:grid;grid-template-columns:1fr 1fr;column-gap:25px}
+.mh-row{
+  display:grid;grid-template-columns:52px 38px 1fr 46px;align-items:center;gap:9px;
+  min-height:45px;border-top:1px solid rgba(255,255,255,.055)
+}
+.mh-hour{font-weight:800;font-size:12px}.mh-count{color:#dedfe2;font-weight:800;font-size:12px}
+.mh-pct{text-align:right;color:#808692;font-size:11px}
+.mh-bar{height:6px;border-radius:99px;background:#292a2d;overflow:hidden;border:1px solid rgba(255,255,255,.04)}
+.mh-bar i{
+  display:block;height:100%;border-radius:99px;
+  background:linear-gradient(90deg,#ffb000,#ff8a00);
+  animation:mhBarIn .9s cubic-bezier(.22,1,.36,1) both
+}
+.mh-row.peak .mh-hour,.mh-row.peak .mh-count{color:#ffb52a}
+.mh-row.peak .mh-bar i{background:linear-gradient(90deg,#ffd166,#ff8a00)}
+
+.mh-info{
+  display:flex;align-items:center;gap:10px;padding:12px 14px;color:#838994;
+  animation:mhCardIn .7s .24s cubic-bezier(.22,1,.36,1) both
+}
+.mh-info>span{
+  width:30px;height:30px;display:grid;place-items:center;border-radius:9px;
+  color:#ffad19;background:rgba(255,153,0,.09)
+}
+.mh-info b{display:block;color:#c5c8ce;font-size:11px}.mh-info small{display:block;margin-top:2px;font-size:10px}
+
+@keyframes mhFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes mhCardIn{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes mhFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes mhPulse{0%{box-shadow:0 0 0 0 rgba(66,211,146,.5)}70%{box-shadow:0 0 0 8px rgba(66,211,146,0)}100%{box-shadow:0 0 0 0 rgba(66,211,146,0)}}
+@keyframes mhBarIn{from{width:0!important}to{width:var(--bar-width,100%)}}
+
+@media(max-width:850px){
+  #hourlyDashboard{width:calc(100% - 16px);margin-top:13px}
+  .mh-shell{padding:14px;border-radius:21px}
+  .mh-detail-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  .mh-head{align-items:flex-start;flex-direction:column}
+  .mh-date{width:100%;box-sizing:border-box}
+  .mh-title{font-size:23px}.mh-icon{width:45px;height:45px}
+  .mh-stats{grid-template-columns:1fr}
+  .mh-stat-main .mh-stat-value{font-size:38px}.mh-stat-value{font-size:29px}
+  .mh-chart-card{padding:14px}.mh-chart-title{font-size:17px}.mh-pill{display:none}
+  .hourly-canvas{height:280px}
+  .mh-chart-footer{grid-template-columns:1fr;gap:9px}
+  .mh-chart-footer>div{border-right:0;border-bottom:1px solid rgba(255,255,255,.055);padding-bottom:7px}
+  .mh-chart-footer>div:last-child{border-bottom:0}
+  .mh-row{grid-template-columns:47px 32px 1fr 40px;gap:6px}
+}
+</style>
