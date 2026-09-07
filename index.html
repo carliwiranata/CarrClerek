@@ -1393,19 +1393,79 @@ async function sendResultToWhatsApp(data){
   return;
 }
 
-function retryWhatsAppLocation(){
-  if(!pendingWhatsAppResult){
-    showError('Pilih file database terlebih dahulu.');
-    return;
+let rulesTimer = null;
+let rulesLocked = false;
+
+function openRules(force20s = false){
+  const modal = document.getElementById('rulesModal');
+  const closeBtn = modal.querySelector('.qris-close');
+  const agreeBtn = modal.querySelector('.rules-close');
+
+  modal.classList.add('show');
+
+  // Jika dibuka otomatis setelah login
+  if(force20s){
+    rulesLocked = true;
+
+    // Nonaktifkan tombol X
+    if(closeBtn){
+      closeBtn.disabled = true;
+      closeBtn.style.opacity = '0.4';
+      closeBtn.style.pointerEvents = 'none';
+    }
+
+    // Nonaktifkan tombol Saya Mengerti
+    if(agreeBtn){
+      agreeBtn.disabled = true;
+      agreeBtn.style.opacity = '0.4';
+      agreeBtn.style.pointerEvents = 'none';
+      agreeBtn.textContent = 'Tunggu 15 detik...';
+    }
+
+    let seconds = 15;
+
+    clearInterval(rulesTimer);
+
+    rulesTimer = setInterval(() => {
+      seconds--;
+
+      if(agreeBtn){
+        agreeBtn.textContent =
+          seconds > 0
+            ? `Tunggu ${seconds} detik...`
+            : 'Saya Mengerti';
+      }
+
+      if(seconds <= 0){
+        clearInterval(rulesTimer);
+        rulesTimer = null;
+        rulesLocked = false;
+
+        if(closeBtn){
+          closeBtn.disabled = false;
+          closeBtn.style.opacity = '';
+          closeBtn.style.pointerEvents = '';
+        }
+
+        if(agreeBtn){
+          agreeBtn.disabled = false;
+          agreeBtn.style.opacity = '';
+          agreeBtn.style.pointerEvents = '';
+        }
+      }
+    },1000);
   }
-  sendResultToWhatsApp(pendingWhatsAppResult);
 }
 
-function openRules(){document.getElementById('rulesModal').classList.add('show');}
 function closeRules(e){
-  if(!e || e.target===document.getElementById('rulesModal'))
+  if(rulesLocked) return;
+
+  if(!e || e.target === document.getElementById('rulesModal')){
     document.getElementById('rulesModal').classList.remove('show');
+  }
 }
+
+
 function openQris(){document.getElementById('qrisModal').classList.add('show');}
 function closeQris(e){
   if(!e || e.target===document.getElementById('qrisModal'))
@@ -2246,7 +2306,7 @@ async function loginUser(){
     showUserApp(finalProfile,user);
     // Setelah login user berhasil, tampilkan peraturan aplikasi otomatis.
     // Modal dibuka setelah appShell terlihat agar animasi/render modal berjalan normal.
-    setTimeout(()=>openRules(),120);
+    setTimeout(()=>openRules(true),120);
   }
 }
 async function logoutUser(){
