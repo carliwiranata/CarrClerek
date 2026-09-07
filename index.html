@@ -135,6 +135,10 @@ small{word-break:break-all}
   font-weight:800;
   color:#fff;
 }
+
+<style>
+.admin-location-map-card{margin-top:16px}.admin-location-toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:12px 0}.admin-location-search{flex:1;min-width:220px;background:#111;color:#fff;border:1px solid #343434;border-radius:12px;padding:11px 13px;outline:none}.admin-location-stats{display:flex;gap:8px;flex-wrap:wrap}.admin-location-stat{background:#171717;border:1px solid #303030;border-radius:12px;padding:8px 11px;font-size:12px;color:#b9bec8}.admin-location-stat b{color:#fff;font-size:15px;margin-left:5px}.admin-all-users-map{height:500px;border-radius:16px;overflow:hidden;border:1px solid #303030;background:#0d0d0d}.admin-map-label{background:#111!important;color:#fff!important;border:1px solid #ff8a00!important;border-radius:8px!important;padding:4px 8px!important;font-weight:900!important;box-shadow:0 4px 12px rgba(0,0,0,.35)}.admin-map-label:before{border-top-color:#ff8a00!important}.admin-map-popup{min-width:190px}.admin-map-popup b{font-size:15px}.admin-map-popup .muted{color:#777;font-size:11px;margin-top:3px}.admin-map-popup .loc{margin-top:6px;font-size:12px}.admin-map-popup .edit{margin-top:9px;border:0;background:#ff8a00;color:#111;font-weight:900;border-radius:8px;padding:7px 10px;cursor:pointer}.admin-location-legend{margin-top:8px;font-size:12px;color:#9ca3af}.admin-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px}.admin-dot.on{background:#42e695}.admin-dot.off{background:#ff5252}@media(max-width:650px){.admin-all-users-map{height:420px}.admin-location-toolbar{align-items:stretch}.admin-location-search{min-width:100%}}
+</style>
 </style>
 
 <!-- Leaflet CSS dimuat oleh ensureLeafletLoaded() agar tidak gagal karena SRI/CDN. -->
@@ -277,6 +281,26 @@ small{word-break:break-all}
       </div>
       <button class="auth-btn" type="button" onclick="addUserAdmin()">➕ Tambah User</button>
       <div id="adminMsg" class="auth-msg"></div>
+    </div>
+
+    <div class="admin-card admin-location-map-card">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+        <div>
+          <div class="admin-title" style="font-size:21px">🗺️ Lokasi Semua User</div>
+          <div class="admin-muted">Semua titik lokasi yang sudah ditentukan admin ditampilkan di peta beserta nama user.</div>
+        </div>
+        <button class="admin-mini" type="button" onclick="refreshAdminAllUsersMap()">↻ Refresh Peta</button>
+      </div>
+      <div class="admin-location-toolbar">
+        <input id="adminLocationSearch" class="admin-location-search" type="search" placeholder="🔎 Cari nama user atau lokasi..." oninput="filterAdminAllUsersMap(this.value)">
+        <div class="admin-location-stats">
+          <span class="admin-location-stat">User <b id="adminMapTotal">0</b></span>
+          <span class="admin-location-stat">Ada lokasi <b id="adminMapLocated">0</b></span>
+          <span class="admin-location-stat">Belum lokasi <b id="adminMapNoLocation">0</b></span>
+        </div>
+      </div>
+      <div id="adminAllUsersMap" class="admin-all-users-map"></div>
+      <div class="admin-location-legend"><span class="admin-dot on"></span>Aktif &nbsp;&nbsp; <span class="admin-dot off"></span>Nonaktif &nbsp; • &nbsp; Label pada peta = nama user</div>
     </div>
     <div class="admin-card">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
@@ -2250,6 +2274,67 @@ async function adminManageUser(action, userId, body={}){
   return data;
 }
 
+
+let adminAllUsersMap=null;
+let adminAllUsersMarkers=[];
+let adminAllUsersData=[];
+
+function adminMapSafeText(value){
+  return escapeAdmin(value==null?'':String(value));
+}
+
+function renderAdminAllUsersMap(users){
+  const mapEl=document.getElementById('adminAllUsersMap');
+  if(!mapEl) return;
+  const all=Array.isArray(users)?users:[];
+  const located=all.filter(u=>Number.isFinite(Number(u.location_latitude))&&Number.isFinite(Number(u.location_longitude)));
+  const search=(document.getElementById('adminLocationSearch')?.value||'').trim().toLowerCase();
+  const filtered=located.filter(u=>{
+    if(!search) return true;
+    return [u.full_name,u.username,u.location_name].some(v=>String(v||'').toLowerCase().includes(search));
+  });
+  const totalEl=document.getElementById('adminMapTotal');
+  const locatedEl=document.getElementById('adminMapLocated');
+  const noLocEl=document.getElementById('adminMapNoLocation');
+  if(totalEl) totalEl.textContent=all.length;
+  if(locatedEl) locatedEl.textContent=located.length;
+  if(noLocEl) noLocEl.textContent=all.length-located.length;
+
+  ensureLeafletLoaded().then(()=>{
+    if(!adminAllUsersMap){
+      adminAllUsersMap=L.map(mapEl,{zoomControl:true,attributionControl:true}).setView([-2.5,118],5);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(adminAllUsersMap);
+    }
+    adminAllUsersMarkers.forEach(m=>adminAllUsersMap.removeLayer(m));
+    adminAllUsersMarkers=[];
+    const bounds=[];
+    filtered.forEach(u=>{
+      const lat=Number(u.location_latitude), lon=Number(u.location_longitude);
+      const name=u.full_name||u.username||'User';
+      const active=u.is_active!==false && !(u.expires_at&&new Date(u.expires_at)<new Date());
+      const marker=L.circleMarker([lat,lon],{radius:9,weight:3,opacity:1,fillOpacity:.9,color:active?'#42e695':'#ff5252',fillColor:active?'#42e695':'#ff5252'}).addTo(adminAllUsersMap);
+      marker.bindTooltip(adminMapSafeText(name),{permanent:true,direction:'top',offset:[0,-8],className:'admin-map-label'});
+      const popup=`<div class="admin-map-popup"><b>${adminMapSafeText(name)}</b><div class="muted">@${adminMapSafeText(u.username||'-')}</div><div class="loc">📍 ${adminMapSafeText(u.location_name||'Lokasi user')}</div><div class="loc">${lat.toFixed(6)}, ${lon.toFixed(6)}</div><div class="loc">Status: <b>${active?'AKTIF':'NONAKTIF'}</b></div><button class="edit" onclick="editAdminUser('${String(u.id).replace(/'/g,'')}')">✏️ Edit User / Lokasi</button></div>`;
+      marker.bindPopup(popup);
+      adminAllUsersMarkers.push(marker);
+      bounds.push([lat,lon]);
+    });
+    if(bounds.length===1) adminAllUsersMap.setView(bounds[0],16);
+    else if(bounds.length>1) adminAllUsersMap.fitBounds(bounds,{padding:[35,35],maxZoom:16});
+    setTimeout(()=>adminAllUsersMap.invalidateSize(),100);
+  }).catch(()=>{
+    mapEl.innerHTML='<div style="padding:20px;color:#aaa">Peta tidak dapat dimuat. Periksa koneksi internet lalu tekan Refresh Peta.</div>';
+  });
+}
+
+function filterAdminAllUsersMap(value){
+  renderAdminAllUsersMap(adminAllUsersData);
+}
+
+function refreshAdminAllUsersMap(){
+  loadAdminUsers();
+}
+
 async function loadAdminUsers(){
   adminMsg('');
   const {data,error}=await supa.from('profiles')
@@ -2281,6 +2366,8 @@ async function loadAdminUsers(){
   document.getElementById('adminActive').textContent=active;
   document.getElementById('adminInactive').textContent=users.length-active;
   document.getElementById('adminUsersBody').innerHTML=rows||'<tr><td colspan="5">Belum ada user.</td></tr>';
+  adminAllUsersData=users;
+  renderAdminAllUsersMap(users);
 }
 function escapeAdmin(s){
   return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
