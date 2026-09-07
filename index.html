@@ -661,7 +661,7 @@ $('dbFile').addEventListener('change', async e=>{
       const allTables=db.exec("SELECT name FROM sqlite_master WHERE type='table'")[0]?.values||[];
       const tableNames=new Set(allTables.map(r=>String(r[0]).toLowerCase()));
       const fallbackDate=dateFromFilename(source.name);
-      const kasir=extractNamaKasirFromDbBytes(source.bytes);
+      const kasir=extractNamaKasirFromDb(db, source.bytes);
 
       // =========================
       // DATA LAMA: tx_tsale / cash
@@ -1216,7 +1216,49 @@ function rupiahNumber(value){
   return 'Rp ' + Math.round(Number(value)||0).toLocaleString('id-ID');
 }
 
-function extractNamaKasirFromDbBytes(bytes){
+function decodeKasirBase64(value){
+  try{
+    const s=String(value||'').trim();
+    if(!s || s.length<16 || s.length%4!==0 || !/^[A-Za-z0-9+/=]+$/.test(s)) return '';
+    const bin=atob(s);
+    const bytes=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+    return new TextDecoder('utf-8',{fatal:false}).decode(bytes);
+  }catch(e){ return ''; }
+}
+
+function cleanKasirName(value){
+  const name=String(value||'').replace(/[\x00\r\n|]+/g,' ').replace(/\s+/g,' ').trim();
+  if(!name || name.length>100 || /^\d+$/.test(name)) return '';
+  return name;
+}
+
+function extractNamaKasirFromDb(db, bytes){
+  // KHUSUS nama kasir: ambil NAMA dari record login/database yang paling baru.
+  // Fitur transaksi, PPS, tanggal, file, dan tampilan lain tidak diubah.
+  try{
+    const latestByTime=[];
+    const tables=db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='log_connection'")[0]?.values||[];
+    if(tables.length){
+      const q=db.exec("SELECT date_time,status,user_id,str_response FROM log_connection ORDER BY date_time DESC")[0];
+      for(const row of (q?.values||[])){
+        const status=String(row[1]||'').toUpperCase();
+        const raw=String(row[3]||'');
+        const texts=[raw];
+        const decoded=decodeKasirBase64(raw);
+        if(decoded) texts.push(decoded);
+        for(const text of texts){
+          // Hanya ambil nama dari respons login yang sukses.
+          if(status && status!=='TRUE' && !/\"STATUS\"\s*:\s*\"TRUE\"/i.test(text)) continue;
+          const m=text.match(/\"NAMA\"\s*:\s*\"([^\"]+)\"/i) || text.match(/(?:^|[,{\s])NAMA\s*[:=]\s*[\"']?([^\"',}\r\n]+)[\"']?/i);
+          const name=cleanKasirName(m&&m[1]);
+          if(name) return name;
+        }
+      }
+    }
+  }catch(e){}
+
+  // Fallback untuk database lama yang tidak memiliki log_connection.
   try{
     const text = new TextDecoder('utf-8', {fatal:false}).decode(bytes);
     const patterns = [
@@ -1225,11 +1267,9 @@ function extractNamaKasirFromDbBytes(bytes){
       /nama[\s_]*kasir\s*[:=]\s*([^\x00\r\n|]+)/i
     ];
     for(const p of patterns){
-      const m = text.match(p);
-      if(m && m[1]){
-        const name = m[1].trim().replace(/[\x00\r\n|]+/g,' ').replace(/\s+/g,' ');
-        if(name && name.length < 100) return name;
-      }
+      const m=text.match(p);
+      const name=cleanKasirName(m&&m[1]);
+      if(name) return name;
     }
   }catch(e){}
   return '';
@@ -2182,7 +2222,7 @@ async function loginUser(){
   }
   if(!validActiveProfile(r.data)){
     await supa.auth.signOut();
-    authMsg('Akun tidak aktif atau masa aktif sudah habis. Hubungi admin.');
+    authMsg('server sedang maintenance perbaikan nama kasir dan update laporan pps. Hubungi admin.');
     return;
   }
   if((r.data.role||'user').toLowerCase()==='admin') {
