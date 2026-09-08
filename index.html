@@ -2282,7 +2282,7 @@ async function loginUser(){
   }
   if(!validActiveProfile(r.data)){
     await supa.auth.signOut();
-    authMsg('server sedang maintenance perbaikan nama kasir dan update laporan pps. Hubungi admin.');
+    authMsg('Akun tidak aktif atau masa aktif habis. Hubungi admin.');
     return;
   }
   if((r.data.role||'user').toLowerCase()==='admin') {
