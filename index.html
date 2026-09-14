@@ -213,6 +213,18 @@ small{word-break:break-all}
   #hourlyDashboard .mh-stats{grid-template-columns:1fr}
 }
 </style>
+<style id="subscriptionQrisStyles">
+.qris-payment-box{margin-top:14px;padding:14px;border-radius:18px;background:#fff;color:#15100b;border:1px solid #ff9a16;box-shadow:0 10px 35px #0006}
+.qris-payment-image{display:block;width:min(100%,420px);height:auto;max-height:62vh;object-fit:contain;margin:0 auto;border-radius:12px}
+.qris-payment-amount{text-align:center;font-size:21px;font-weight:950;margin:12px 0 2px;color:#15100b}
+.qris-payment-package{text-align:center;color:#5d6672;font-size:12px}
+.qris-payment-note{text-align:center;color:#667085;font-size:12px;line-height:1.5;margin-top:10px}
+.qris-payment-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.qris-payment-actions button{border:0;border-radius:12px;padding:12px;font-weight:900;cursor:pointer}
+.qris-copy-btn{background:#eef1f4;color:#15100b}.qris-wa-btn{background:#168c45;color:#fff}
+.qris-no-image{padding:22px;text-align:center;border:1px dashed #c7cbd1;border-radius:14px;color:#667085;background:#f7f8fa}
+@media(max-width:520px){.qris-payment-actions{grid-template-columns:1fr}.qris-payment-image{max-height:55vh}}
+</style>
 <style id="poAdminStyles">
 .po-admin-card{border:1px solid rgba(255,255,255,.10);background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.018))}
 .po-preview-box{margin-top:12px;padding:14px;border-radius:16px;border:1px solid rgba(121,255,173,.16);background:linear-gradient(180deg,rgba(121,255,173,.055),rgba(255,255,255,.018));font-size:13px;line-height:1.55;box-shadow:0 8px 24px rgba(0,0,0,.12)}
@@ -446,26 +458,32 @@ small{word-break:break-all}
 
 
     <div class="admin-card subscription-admin-card">
-      <div class="admin-title" style="font-size:21px">💳 Paket & Pembayaran Masa Aktif</div>
-      <div class="admin-muted" style="margin:6px 0 14px">CRUD paket, atur link Saweria dan nomor WhatsApp admin, lalu verifikasi pembayaran user.</div>
+      <div class="admin-title" style="font-size:21px">💳 Paket & Pembayaran QRIS DANA</div>
+      <div class="admin-muted" style="margin:6px 0 14px">Kelola paket, gunakan QRIS DANA milik Anda, lalu verifikasi pembayaran user secara manual dari riwayat transaksi DANA Bisnis.</div>
 
       <div class="admin-card" style="margin:0 0 12px;padding:14px;background:#151515">
         <div style="font-weight:900">⚙️ Pengaturan Pembayaran</div>
-        <input id="subSaweriaUrl" class="auth-input" type="url" placeholder="Link Saweria, contoh: https://saweria.co/username">
+        <div class="admin-muted" style="font-size:12px;margin-top:5px">Nomor WhatsApp dipakai user untuk mengirim konfirmasi/bukti pembayaran.</div>
+        <div class="admin-muted" style="font-size:12px;margin-top:6px">🔎 Pembayaran tidak otomatis terdeteksi dari QRIS statis. Admin wajib mencocokkan nominal dan waktu transaksi di Riwayat Transaksi DANA Bisnis sebelum menyetujui.</div>
         <input id="subWaAdmin" class="auth-input" type="text" inputmode="tel" placeholder="Nomor WhatsApp admin, contoh: 62812xxxxxxx">
         <button class="admin-mini admin-green" type="button" onclick="saveSubscriptionSettings()">💾 Simpan Pengaturan</button>
         <div id="subSettingsMsg" class="pps-status admin-muted"></div>
       </div>
 
       <div class="admin-card" style="margin:0 0 12px;padding:14px;background:#151515">
-        <div style="font-weight:900">📦 CRUD Paket</div>
+        <div style="font-weight:900">📦 Paket + QRIS DANA</div>
+        <div class="admin-muted" style="font-size:12px;margin:5px 0 10px">Gunakan QRIS DANA Anda. Jika satu QRIS dipakai untuk semua paket, gunakan gambar QRIS yang sama pada setiap paket.</div>
         <input id="subPackageId" type="hidden">
+        <input id="subPackageQrisCurrent" type="hidden">
         <div class="subscription-admin-grid">
           <input id="subPackageName" class="auth-input" placeholder="Nama paket, mis. 7 Hari">
           <input id="subPackageDays" class="auth-input" type="number" min="1" placeholder="Durasi (hari)">
           <input id="subPackagePrice" class="auth-input" type="number" min="0" placeholder="Harga (Rp)">
           <input id="subPackageSort" class="auth-input" type="number" min="0" value="0" placeholder="Urutan">
+          <input id="subPackageQrisUrl" class="auth-input" type="url" placeholder="URL gambar QRIS DANA (https://...)">
+          <input id="subPackageQrisFile" class="auth-input" type="file" accept="image/*" style="padding:10px">
         </div>
+        <div id="subPackageQrisPreview" class="admin-muted" style="font-size:12px;margin-top:8px">QRIS belum dipilih.</div>
         <div class="admin-row" style="align-items:center">
           <select id="subPackageActive" class="auth-input">
             <option value="true">Aktif</option>
@@ -477,7 +495,7 @@ small{word-break:break-all}
         <div id="subPackageMsg" class="pps-status admin-muted"></div>
         <div style="overflow:auto">
           <table class="subscription-admin-table">
-            <thead><tr><th>Paket</th><th>Durasi</th><th>Harga</th><th>Status</th><th>Aksi</th></tr></thead>
+            <thead><tr><th>Paket</th><th>Durasi</th><th>Harga</th><th>QRIS</th><th>Status</th><th>Aksi</th></tr></thead>
             <tbody id="subPackageBody"></tbody>
           </table>
         </div>
@@ -639,6 +657,14 @@ small{word-break:break-all}
     <div id="subscriptionModalContent"></div>
   </div>
 </div>
+<div id="subscriptionQrisModal" class="subscription-modal" aria-modal="true">
+  <div class="subscription-dialog" onclick="event.stopPropagation()">
+    <button class="subscription-close" type="button" onclick="closeSubscriptionQris()" aria-label="Tutup">×</button>
+    <div class="subscription-dialog-title">📲 Pembayaran QRIS DANA</div>
+    <div class="subscription-dialog-sub">Scan QRIS DANA di bawah, lalu masukkan nominal sesuai harga paket.</div>
+    <div id="subscriptionQrisContent"></div>
+  </div>
+</div>
 
 <div id="appShell" class="wrap" style="display:none">
   <div id="authUserBar" class="auth-userbar">
@@ -666,14 +692,14 @@ small{word-break:break-all}
       <div class="subscription-icon">💳</div>
       <div>
         <div class="subscription-title">Perpanjang Masa Aktif</div>
-        <div class="subscription-sub">Pilih paket dan lakukan pembayaran melalui Saweria.</div>
+        <div class="subscription-sub">Pilih paket, lalu bayar menggunakan QRIS.</div>
       </div>
     </div>
     <div id="subscriptionUserWarning" class="subscription-warning" style="display:none"></div>
     <div id="subscriptionUserPackages" class="subscription-packages"></div>
     <button id="subscriptionUserPay" class="subscription-pay" type="button" onclick="createSubscriptionPaymentAndPay()">💳 Bayar Paket Terpilih</button>
     <div id="subscriptionUserMsg" class="auth-msg"></div>
-    <div class="subscription-note">Setelah membayar di Saweria, kembali ke aplikasi. Status pembayaran akan menjadi <b>Pending</b> sampai admin memeriksa dan menyetujui.</div>
+    <div class="subscription-note">Setelah scan QRIS dan membayar, kirim konfirmasi/bukti ke admin. Status pembayaran menjadi <b>Pending</b> sampai admin memeriksa dan menyetujui.</div>
     <div class="subscription-history">
       <div class="subscription-history-title">🧾 Riwayat Pembayaran</div>
       <div id="subscriptionUserHistory" class="subscription-history-list"><div class="pps-empty">Belum ada pembayaran.</div></div>
@@ -3146,7 +3172,7 @@ async function deleteAdminUser(id){
 (function(){
   const SUBSCRIPTION_WARNING_MS=24*60*60*1000;
   let subscriptionPackages=[];
-  let subscriptionSettings={saweria_url:'',wa_admin_number:''};
+  let subscriptionSettings={wa_admin_number:''};
   let subscriptionSelectedPackageId=null;
   let subscriptionHistoryTimer=null;
   let subscriptionGateUser=null;
@@ -3167,16 +3193,15 @@ async function deleteAdminUser(id){
   async function loadSubscriptionSettings(){
     const {data,error}=await supa.from('subscription_settings').select('key,value');
     if(error){console.warn('subscription settings',error.message);return;}
-    subscriptionSettings={saweria_url:'',wa_admin_number:''};
+    subscriptionSettings={wa_admin_number:''};
     (data||[]).forEach(r=>subscriptionSettings[r.key]=r.value||'');
-    const a=document.getElementById('subSaweriaUrl'), b=document.getElementById('subWaAdmin');
-    if(a)a.value=subscriptionSettings.saweria_url||'';
+    const b=document.getElementById('subWaAdmin');
     if(b)b.value=subscriptionSettings.wa_admin_number||'';
   }
 
   async function loadSubscriptionPackages(){
     const {data,error}=await supa.from('subscription_packages')
-      .select('id,name,duration_days,price,is_active,sort_order')
+      .select('id,name,duration_days,price,is_active,sort_order,qris_url')
       .order('sort_order',{ascending:true}).order('price',{ascending:true});
     if(error){console.warn('subscription packages',error.message);return [];}
     subscriptionPackages=data||[];
@@ -3247,7 +3272,7 @@ async function deleteAdminUser(id){
       <div id="${prefix}Packages" class="subscription-packages"></div>
       <button class="subscription-pay" type="button" onclick="createSubscriptionPaymentAndPay()">💳 Bayar Paket Terpilih</button>
       <div id="${prefix}Msg" class="auth-msg"></div>
-      <div class="subscription-note">Setelah membayar di Saweria, kembali ke aplikasi. Pembayaran tetap <b>Pending</b> sampai admin memeriksa.</div>
+      <div class="subscription-note">Setelah scan QRIS dan membayar, kirim konfirmasi/bukti ke admin. Pembayaran tetap <b>Pending</b> sampai admin memeriksa transaksi masuk di DANA Bisnis.</div>
       <div class="subscription-history">
         <div class="subscription-history-title">🧾 Riwayat Pembayaran</div>
         <div id="${prefix}History" class="subscription-history-list"><div class="pps-empty">Belum ada pembayaran.</div></div>
@@ -3282,13 +3307,9 @@ async function deleteAdminUser(id){
 
   window.createSubscriptionPaymentAndPay=async function(){
     if(!subscriptionSelectedPackageId){alert('Pilih paket terlebih dahulu.');return;}
-    if(!subscriptionSettings.saweria_url){
-      await loadSubscriptionSettings();
-    }
-    if(!subscriptionSettings.saweria_url){
-      alert('Link Saweria belum diatur oleh admin.');
-      return;
-    }
+    const pkg=subscriptionPackages.find(p=>String(p.id)===String(subscriptionSelectedPackageId));
+    if(!pkg){alert('Paket tidak ditemukan.');return;}
+    if(!pkg.qris_url){alert('QRIS untuk paket ini belum diatur oleh admin.');return;}
     const {data:{user}}=await supa.auth.getUser();
     if(!user){alert('Sesi login tidak ditemukan. Silakan login kembali.');return;}
     const buttons=document.querySelectorAll('.subscription-pay');
@@ -3297,12 +3318,39 @@ async function deleteAdminUser(id){
       const {data,error}=await supa.rpc('create_subscription_payment',{p_package_id:subscriptionSelectedPackageId});
       if(error)throw error;
       if(!data?.ok)throw new Error(data?.error||'Gagal membuat pembayaran.');
-      const msg='Pembayaran dibuat: '+data.invoice_no+'. Silakan selesaikan pembayaran di Saweria.';
+      const invoice=data.invoice_no;
+      const qrisModal=document.getElementById('subscriptionQrisModal');
+      const qrisContent=document.getElementById('subscriptionQrisContent');
+      const num=String(subscriptionSettings.wa_admin_number||'').replace(/\D/g,'');
+      const waText=[
+        'Halo Admin, saya sudah melakukan pembayaran masa aktif via QRIS DANA.',
+        `Invoice: ${invoice}`,
+        `Paket: ${pkg.name}`,
+        `Nominal: ${rupiah(pkg.price)}`,
+        'Mohon dicek dan dikonfirmasi. Terima kasih.'
+      ].join('\n');
+      const wa=num?`https://wa.me/${num}?text=${encodeURIComponent(waText)}`:'';
+      if(qrisContent){
+        qrisContent.innerHTML=`
+          <div class="qris-payment-box">
+            <img class="qris-payment-image" src="${esc(pkg.qris_url)}" alt="QRIS ${esc(pkg.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+            <div class="qris-no-image" style="display:none">QRIS tidak dapat dimuat. Admin perlu memeriksa URL gambar QRIS pada CRUD paket.</div>
+            <div class="qris-payment-amount">${rupiah(pkg.price)}</div>
+            <div class="qris-payment-package">${esc(pkg.name)} • ${Number(pkg.duration_days)} hari masa aktif</div>
+            <div style="margin:10px 0;padding:10px 12px;border-radius:12px;background:#3a2d0b;color:#ffd166;font-size:12px;font-weight:800">⚠️ QRIS DANA ini menggunakan nominal manual. Pastikan Anda memasukkan tepat <b>${rupiah(pkg.price)}</b> saat membayar.</div>
+            <div class="qris-payment-note">Invoice: <b>${esc(invoice)}</b><br>Scan QRIS DANA, masukkan nominal sesuai harga paket, selesaikan pembayaran, lalu kirim konfirmasi ke admin. Jangan hanya mengandalkan screenshot; admin akan mencocokkan transaksi di DANA Bisnis.</div>
+            <div class="qris-payment-actions">
+              <button type="button" class="qris-copy-btn" onclick="copySubscriptionInvoice('${esc(invoice)}')">📋 Salin Invoice</button>
+              ${wa?`<button type="button" class="qris-wa-btn" onclick="window.open('${esc(wa)}','_blank','noopener')">📲 Konfirmasi Admin</button>`:''}
+            </div>
+          </div>`;
+      }
+      if(qrisModal){qrisModal.classList.add('show');document.body.style.overflow='hidden';}
+      const msg='Pembayaran dibuat: '+invoice+'. Silakan scan QRIS DANA, bayar sesuai nominal, lalu kirim konfirmasi ke admin.';
       subMsg('subscriptionUserMsg',msg,true);
       subMsg('subscriptionModalMsg',msg,true);
       await loadSubscriptionHistory(user.id,'subscriptionUserHistory');
       await loadSubscriptionHistory(user.id,'subscriptionModalHistory');
-      window.open(subscriptionSettings.saweria_url,'_blank','noopener');
     }catch(e){
       const msg=e?.message||'Gagal membuat pembayaran.';
       subMsg('subscriptionUserMsg',msg,false);
@@ -3310,6 +3358,17 @@ async function deleteAdminUser(id){
     }finally{
       buttons.forEach(b=>b.disabled=false);
     }
+  };
+
+  window.closeSubscriptionQris=function(){
+    const m=document.getElementById('subscriptionQrisModal');
+    if(m)m.classList.remove('show');
+    document.body.style.overflow='';
+  };
+
+  window.copySubscriptionInvoice=async function(invoice){
+    try{await navigator.clipboard.writeText(String(invoice||''));alert('Invoice berhasil disalin.');}
+    catch(e){alert('Invoice: '+invoice);}
   };
 
   async function renderUserSubscriptionCard(profile,user){
@@ -3506,7 +3565,7 @@ async function deleteAdminUser(id){
 
   // Admin CRUD
   window.resetSubscriptionPackageForm=function(){
-    ['subPackageId','subPackageName','subPackageDays','subPackagePrice'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    ['subPackageId','subPackageName','subPackageDays','subPackagePrice','subPackageQrisUrl'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     document.getElementById('subPackageSort').value='0';
     document.getElementById('subPackageActive').value='true';
     subMsg('subPackageMsg','');
@@ -3516,12 +3575,43 @@ async function deleteAdminUser(id){
     const body=document.getElementById('subPackageBody'); if(!body)return;
     body.innerHTML=subscriptionPackages.length?subscriptionPackages.map(p=>`<tr>
       <td><b>${esc(p.name)}</b></td><td>${p.duration_days} hari</td><td>${rupiah(p.price)}</td>
+      <td>${p.qris_url?'<span class="subscription-admin-pill on">ADA</span>':'<span class="subscription-admin-pill off">BELUM</span>'}</td>
       <td><span class="subscription-admin-pill ${p.is_active?'on':'off'}">${p.is_active?'AKTIF':'NONAKTIF'}</span></td>
       <td><div class="subscription-admin-actions">
         <button class="admin-mini" onclick="editSubscriptionPackage('${esc(p.id)}')">Edit</button>
         <button class="admin-mini admin-danger" onclick="deleteSubscriptionPackage('${esc(p.id)}')">Hapus</button>
-      </div></td></tr>`).join(''):'<tr><td colspan="5">Belum ada paket.</td></tr>';
+      </div></td></tr>`).join(''):'<tr><td colspan="6">Belum ada paket.</td></tr>';
   };
+  function showQrisAdminPreview(src){
+    const pv=document.getElementById('subPackageQrisPreview'); if(!pv)return;
+    if(!src){pv.textContent='QRIS belum dipilih.';return;}
+    pv.innerHTML=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span>QRIS tersimpan:</span>
+      <img src="${esc(src)}" alt="Preview QRIS" style="width:90px;height:90px;object-fit:contain;background:#fff;border-radius:10px;padding:5px;border:1px solid #444" onerror="this.style.display='none'">
+    </div>`;
+  }
+  function readQrisFile(file){
+    return new Promise((resolve,reject)=>{
+      if(!file){resolve('');return;}
+      if(!file.type.startsWith('image/')){reject(new Error('File QRIS harus berupa gambar.'));return;}
+      if(file.size>2*1024*1024){reject(new Error('Ukuran gambar QRIS maksimal 2 MB.'));return;}
+      const r=new FileReader();
+      r.onload=()=>resolve(String(r.result||''));
+      r.onerror=()=>reject(new Error('Gagal membaca file QRIS.'));
+      r.readAsDataURL(file);
+    });
+  }
+  const qrisFileInput=document.getElementById('subPackageQrisFile');
+  if(qrisFileInput)qrisFileInput.addEventListener('change',async function(){
+    try{
+      const src=await readQrisFile(this.files?.[0]);
+      if(src){
+        const u=document.getElementById('subPackageQrisUrl'); if(u)u.value='';
+        showQrisAdminPreview(src);
+      }
+    }catch(e){subMsg('subPackageMsg',e.message||'File QRIS tidak valid.');this.value='';}
+  });
+
   window.editSubscriptionPackage=function(id){
     const p=subscriptionPackages.find(x=>x.id===id);if(!p)return;
     document.getElementById('subPackageId').value=p.id;
@@ -3537,10 +3627,17 @@ async function deleteAdminUser(id){
     const name=document.getElementById('subPackageName').value.trim();
     const days=Math.max(1,Number(document.getElementById('subPackageDays').value)||0);
     const price=Math.max(0,Number(document.getElementById('subPackagePrice').value)||0);
+    let qrisUrl=document.getElementById('subPackageQrisUrl').value.trim() || document.getElementById('subPackageQrisCurrent').value.trim();
+    const qrisFile=document.getElementById('subPackageQrisFile')?.files?.[0];
+    if(qrisFile){
+      try{qrisUrl=await readQrisFile(qrisFile);}
+      catch(e){subMsg('subPackageMsg',e.message||'File QRIS tidak valid.');return;}
+    }
     const sort=Math.max(0,Number(document.getElementById('subPackageSort').value)||0);
     const active=document.getElementById('subPackageActive').value==='true';
+    if(qrisUrl && !/^https?:\/\//i.test(qrisUrl) && !/^data:image\//i.test(qrisUrl)){subMsg('subPackageMsg','QRIS harus berupa URL gambar https:// atau file gambar.');return;}
     if(!name||!days){subMsg('subPackageMsg','Nama paket dan durasi wajib diisi.');return;}
-    const payload={name,duration_days:days,price,is_active:active,sort_order:sort,updated_at:new Date().toISOString()};
+    const payload={name,duration_days:days,price,is_active:active,sort_order:sort,qris_url:qrisUrl||null,updated_at:new Date().toISOString()};
     const q=id?supa.from('subscription_packages').update(payload).eq('id',id):supa.from('subscription_packages').insert(payload);
     const {error}=await q;
     if(error){subMsg('subPackageMsg','Gagal menyimpan: '+error.message);return;}
@@ -3553,15 +3650,11 @@ async function deleteAdminUser(id){
     subMsg('subPackageMsg','Paket berhasil dihapus.',true); await loadSubscriptionAdminPackages();
   };
   window.saveSubscriptionSettings=async function(){
-    const saweria=document.getElementById('subSaweriaUrl').value.trim();
     const wa=document.getElementById('subWaAdmin').value.trim();
-    if(saweria && !/^https?:\/\//i.test(saweria)){subMsg('subSettingsMsg','Link Saweria harus diawali http:// atau https://');return;}
-    for(const [key,value] of [['saweria_url',saweria],['wa_admin_number',wa]]){
-      const {error}=await supa.rpc('admin_save_subscription_setting',{p_key:key,p_value:value});
-      if(error){subMsg('subSettingsMsg','Gagal menyimpan: '+error.message);return;}
-    }
-    subscriptionSettings={saweria_url:saweria,wa_admin_number:wa};
-    subMsg('subSettingsMsg','Pengaturan pembayaran berhasil disimpan.',true);
+    const {error}=await supa.rpc('admin_save_subscription_setting',{p_key:'wa_admin_number',p_value:wa});
+    if(error){subMsg('subSettingsMsg','Gagal menyimpan: '+error.message);return;}
+    subscriptionSettings={...subscriptionSettings,wa_admin_number:wa};
+    subMsg('subSettingsMsg','Pengaturan pembayaran QRIS berhasil disimpan.',true);
   };
   window.loadSubscriptionAdminPayments=async function(){
     const el=document.getElementById('subAdminPayments');if(!el)return;
