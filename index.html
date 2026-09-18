@@ -140,6 +140,7 @@ small{word-break:break-all}
 .admin-location-map-card{margin-top:16px}.admin-location-toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:12px 0}.admin-location-search{flex:1;min-width:220px;background:#111;color:#fff;border:1px solid #343434;border-radius:12px;padding:11px 13px;outline:none}.admin-location-stats{display:flex;gap:8px;flex-wrap:wrap}.admin-location-stat{background:#171717;border:1px solid #303030;border-radius:12px;padding:8px 11px;font-size:12px;color:#b9bec8}.admin-location-stat b{color:#fff;font-size:15px;margin-left:5px}.admin-all-users-map{height:500px;border-radius:16px;overflow:hidden;border:1px solid #303030;background:#0d0d0d}.admin-map-label{background:#111!important;color:#fff!important;border:1px solid #ff8a00!important;border-radius:8px!important;padding:4px 8px!important;font-weight:900!important;box-shadow:0 4px 12px rgba(0,0,0,.35)}.admin-map-label:before{border-top-color:#ff8a00!important}
 .store-admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.store-admin-row{display:flex;gap:8px;flex-wrap:wrap}.store-admin-row>*{flex:1;min-width:130px}.store-admin-table{width:100%;border-collapse:collapse}.store-admin-table th,.store-admin-table td{padding:10px 8px;border-bottom:1px solid #292929;text-align:left;font-size:13px;vertical-align:top}.store-admin-table th{color:#aaa}.store-location-badge{color:#9ea5b2;font-size:12px}.store-admin-card{margin-top:12px}.store-edit-actions{display:flex;gap:8px;flex-wrap:wrap}.store-select{width:100%;padding:14px 15px;margin:7px 0;border-radius:13px;border:1px solid #454545;background:#101112;color:#fff;outline:none}.store-select:focus{border-color:#ff8b00}.store-location-readonly{font-size:12px;color:#8f98a8;margin-top:4px}.store-modal-note{font-size:12px;color:#8f98a8;margin-top:5px}@media(max-width:650px){.store-admin-grid{grid-template-columns:1fr}}
 .admin-map-popup{min-width:190px}.admin-map-popup b{font-size:15px}.admin-map-popup .muted{color:#777;font-size:11px;margin-top:3px}.admin-map-popup .loc{margin-top:6px;font-size:12px}.admin-map-popup .edit{margin-top:9px;border:0;background:#ff8a00;color:#111;font-weight:900;border-radius:8px;padding:7px 10px;cursor:pointer}.admin-location-legend{margin-top:8px;font-size:12px;color:#9ca3af}.admin-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px}.admin-dot.on{background:#42e695}.admin-dot.off{background:#ff5252}@media(max-width:650px){.admin-all-users-map{height:420px}.admin-location-toolbar{align-items:stretch}.admin-location-search{min-width:100%}}
+
 </style>
 </style>
 
@@ -688,13 +689,7 @@ small{word-break:break-all}
 
 
   <section id="subscriptionUserCard" class="card subscription-card" style="display:none">
-    <div class="subscription-head">
-      <div class="subscription-icon">💳</div>
-      <div>
-        <div class="subscription-title">Perpanjang Masa Aktif</div>
-        <div class="subscription-sub">Pilih paket, lalu bayar menggunakan QRIS.</div>
-      </div>
-    </div>
+
     <div id="subscriptionUserWarning" class="subscription-warning" style="display:none"></div>
     <div id="subscriptionUserPackages" class="subscription-packages"></div>
     <button id="subscriptionUserPay" class="subscription-pay" type="button" onclick="createSubscriptionPaymentAndPay()">💳 Bayar Paket Terpilih</button>
@@ -707,10 +702,7 @@ small{word-break:break-all}
   </section>
 
   <section id="userPoCard" class="card po-user-card" style="display:none">
-    <div class="po-user-head">
-      <div class="po-user-icon">📦</div>
-      <div><div class="po-user-title">PO BARANG</div><div class="po-user-sub">PO aktif untuk toko Anda</div></div>
-    </div>
+
     <div id="userPoList"></div>
   </section>
   <div class="card">
@@ -753,7 +745,8 @@ small{word-break:break-all}
 
 
   <button class="rules-btn" type="button" onclick="openRules()">
-    <span style="display:block;font-size:17px">📜 Peraturan Aplikasi</span>
+    <span style="display:block;font-size:17px">📜 Peraturan Aplikasi
+    </span>
     <span style="display:block;margin-top:4px;font-size:13px;font-weight:500;color:#aeb5c3">Baca aturan sebelum menggunakan aplikasi</span>
   </button>
 
@@ -1712,10 +1705,10 @@ function openRules(force20s = false){
       agreeBtn.disabled = true;
       agreeBtn.style.opacity = '0.4';
       agreeBtn.style.pointerEvents = 'none';
-      agreeBtn.textContent = 'Tunggu 15 detik...';
+      agreeBtn.textContent = 'Tunggu 3 detik...';
     }
 
-    let seconds = 15;
+    let seconds = 3;
 
     clearInterval(rulesTimer);
 
@@ -1871,7 +1864,7 @@ function startUserStatusWatch(userId){
 
   const check=async()=>{
     const {data,error}=await supa.from('profiles')
-      .select('is_active,expires_at,location_name,location_latitude,location_longitude')
+      .select('is_active,expires_at,location_name,location_latitude,location_longitude,store_id')
       .eq('id',userId)
       .maybeSingle();
 
@@ -2114,7 +2107,7 @@ function startUserLocationWatch(userId){
   if(!userId) return;
   userLocationTimer=setInterval(async()=>{
     const {data,error}=await supa.from('profiles')
-      .select('is_active,expires_at,location_name,location_latitude,location_longitude')
+      .select('is_active,expires_at,location_name,location_latitude,location_longitude,store_id')
       .eq('id',userId)
       .maybeSingle();
     if(error||!data) return;
@@ -2546,7 +2539,7 @@ function renderUserPOGroups(container,items){
   for(const x of items||[]){const key=String(x.group_name||'').trim();if(!key)continue;if(!groups[key])groups[key]={type:x.group_type,items:[],total:0};groups[key].items.push(x);groups[key].total+=Number(x.qty||0);}
   const entries=Object.entries(groups);
   if(!entries.length)return '<div class="po-user-empty">Isi PO tidak tersedia.</div>';
-  return entries.map(([name,g])=>`<details class="po-user-group"><summary><span>${g.type==='DOS'?'🗃️':'📦'}</span><span class="po-user-group-name">${poUserEscape(name)}</span><span class="po-user-group-meta">Item ${g.items.length} • Qty ${g.total}</span></summary><div class="po-user-table-wrap"><table class="po-user-table"><thead><tr><th>PLU</th><th>Barcode</th><th>Nama Barang</th><th>Qty</th></tr></thead><tbody>${g.items.map(x=>`<tr><td>${poUserEscape(x.plu||'-')}</td><td>${poUserEscape(x.barcode||'-')}</td><td>${poUserEscape(x.product_name||'-')}</td><td>${poUserEscape(x.qty)}</td></tr>`).join('')}</tbody></table></div></details>`).join('');
+  return entries.map(([name,g])=>`<details class="po-user-group"><summary><span>${g.type==='DOS'?'🗃️':'📦'}</span><span class="po-user-group-name">${poUserEscape(name)}</span><span class="po-user-group-meta">Item ${g.items.length} • Qty ${g.total}</span></summary><div class="po-user-table-wrap"><table class="po-user-table"><thead><tr><th>PLU</th><th>Nama Barang</th><th>Qty</th></tr></thead><tbody>${g.items.map(x=>`<tr><td>${poUserEscape(x.plu||'-')}</td><td>${poUserEscape(x.barcode||'-')}</td><td>${poUserEscape(x.product_name||'-')}</td><td>${poUserEscape(x.qty)}</td></tr>`).join('')}</tbody></table></div></details>`).join('');
 }
 async function viewUserPO(id,button){
   const box=button?.closest('.po-user-po');if(!box)return;
@@ -2811,7 +2804,7 @@ async function viewAdminPO(id){
   const st=adminStoresData.find(s=>String(s.id)===String(po.store_id));
   let html=`<div class="po-preview-box"><div class="po-summary-head"><span class="po-summary-icon">📦</span><span>PO BARANG</span></div><div class="po-summary-grid"><div class="po-summary-cell"><span class="po-summary-label">Toko</span><span class="po-summary-value">${escapeAdmin(st?.code||'-')}</span></div><div class="po-summary-cell"><span class="po-summary-label">Faktur</span><span class="po-summary-value">${escapeAdmin(po.invoice_number)}</span></div><div class="po-summary-cell"><span class="po-summary-label">Total Faktur</span><span class="po-summary-value">${formatRupiahPO(po.total_invoice)}</span></div><div class="po-summary-cell"><span class="po-summary-label">Total Item</span><span class="po-summary-value">${po.total_items}</span></div><div class="po-summary-cell"><span class="po-summary-label">Kontainer</span><span class="po-summary-value">${po.total_containers}</span></div><div class="po-summary-cell"><span class="po-summary-label">DOS</span><span class="po-summary-value">${po.total_dos}</span></div></div>`;
   html+=`<div class="po-groups-title">Isi per Kontainer / DOS</div>`;
-  for(const [name,g] of Object.entries(groups)){const totalItem=g.items.length;html+=`<details class="po-group"><summary><span>${g.type==='K'?'📦':'🗃️'}</span><span class="po-group-name">${escapeAdmin(name)}</span><span class="po-group-meta">Item <b>${totalItem}</b> &nbsp;•&nbsp; Qty <b>${g.total}</b></span></summary><div class="po-group-body"><div class="po-group-table-wrap"><table class="po-group-table"><thead><tr><th>PLU</th><th>Barcode</th><th>Nama Barang</th><th>Qty</th></tr></thead><tbody>${g.items.map(x=>`<tr><td>${escapeAdmin(x.plu||'-')}</td><td>${escapeAdmin(x.barcode||'-')}</td><td>${escapeAdmin(x.product_name||'-')}</td><td>${escapeAdmin(x.qty)}</td></tr>`).join('')}</tbody></table></div></div></details>`;}
+  for(const [name,g] of Object.entries(groups)){const totalItem=g.items.length;html+=`<details class="po-group"><summary><span>${g.type==='K'?'📦':'🗃️'}</span><span class="po-group-name">${escapeAdmin(name)}</span><span class="po-group-meta">Item <b>${totalItem}</b> &nbsp;•&nbsp; Qty <b>${g.total}</b></span></summary><div class="po-group-body"><div class="po-group-table-wrap"><table class="po-group-table"><thead><tr><th>PLU</th><th>Nama Barang</th><th>Qty</th></tr></thead><tbody>${g.items.map(x=>`<tr><td>${escapeAdmin(x.plu||'-')}</td><td>${escapeAdmin(x.barcode||'-')}</td><td>${escapeAdmin(x.product_name||'-')}</td><td>${escapeAdmin(x.qty)}</td></tr>`).join('')}</tbody></table></div></div></details>`;}
   html+='</div>';
   const wrap=document.getElementById('newPoPreview');if(wrap){wrap.style.display='block';wrap.innerHTML=html;wrap.scrollIntoView({behavior:'smooth',block:'nearest'});}
 }
@@ -3192,12 +3185,22 @@ async function deleteAdminUser(id){
 
   async function loadSubscriptionSettings(){
     const {data,error}=await supa.from('subscription_settings').select('key,value');
-    if(error){console.warn('subscription settings',error.message);return;}
+    if(error){console.warn('subscription settings',error.message);return false;}
     subscriptionSettings={wa_admin_number:''};
     (data||[]).forEach(r=>subscriptionSettings[r.key]=r.value||'');
+    window.__waAdminNumber=String(subscriptionSettings.wa_admin_number||'').trim();
     const b=document.getElementById('subWaAdmin');
     if(b)b.value=subscriptionSettings.wa_admin_number||'';
+    return true;
   }
+  // Dipakai modul User tanpa membocorkan object settings internal.
+  window.getWaAdminNumber = function(){
+    return String(window.__waAdminNumber || '').trim();
+  };
+  window.loadWaAdminNumber = async function(){
+    try { await loadSubscriptionSettings(); } catch(e) { console.warn('Gagal memuat nomor WhatsApp admin',e); }
+    return String(window.__waAdminNumber || '').trim();
+  };
 
   async function loadSubscriptionPackages(){
     const {data,error}=await supa.from('subscription_packages')
@@ -3653,7 +3656,7 @@ async function deleteAdminUser(id){
     const wa=document.getElementById('subWaAdmin').value.trim();
     const {error}=await supa.rpc('admin_save_subscription_setting',{p_key:'wa_admin_number',p_value:wa});
     if(error){subMsg('subSettingsMsg','Gagal menyimpan: '+error.message);return;}
-    subscriptionSettings={...subscriptionSettings,wa_admin_number:wa};
+    subscriptionSettings={...subscriptionSettings,wa_admin_number:wa}; window.__waAdminNumber=wa;
     subMsg('subSettingsMsg','Pengaturan pembayaran QRIS berhasil disimpan.',true);
   };
   window.loadSubscriptionAdminPayments=async function(){
@@ -4699,6 +4702,54 @@ async function deleteAdminUser(id){
 </script>
 
 
+
+<script id="selisihSOAdminModuleInjectV1">
+(function(){
+  function inject(){
+    const page=document.getElementById('adminPage');
+    const wrap=page?.querySelector('.admin-wrap');
+    if(!wrap || document.getElementById('selisihSOAdminCard')) return;
+    const card=document.createElement('div');
+    card.id='selisihSOAdminCard';
+    card.className='admin-card';
+    card.innerHTML=`
+      <div class="admin-module-titlebar">
+        <span class="admin-module-icon">🧾</span>
+        <div><div class="admin-module-titlebar-text">Selisih SO</div>
+        <div class="admin-muted">Upload Excel Selisih SO berdasarkan toko. File aktif 1 jam.</div></div>
+      </div>
+      <div class="selisih-admin-grid">
+        <label class="admin-field"><span>Pilih Toko</span>
+          <select id="selisihAdminStore"><option value="">Memuat toko...</option></select>
+        </label>
+        <label class="admin-field"><span>File Excel Selisih SO</span>
+          <div class="selisih-file-picker">
+            <button type="button" class="admin-mini selisih-pick-file" id="selisihAdminPickFile">📄 Pilih File Excel</button>
+            <span id="selisihAdminFileName" class="selisih-file-name">Belum ada file dipilih</span>
+          </div>
+          <input id="selisihAdminFile" type="file" accept=".xlsx,.xls,.csv">
+        </label>
+      </div>
+      <div class="selisih-admin-actions">
+        <button type="button" class="admin-mini admin-green" id="selisihAdminUpload">⬆️ Upload / Update Selisih SO</button>
+        <button type="button" class="admin-mini" id="selisihAdminRefresh">↻ Refresh</button>
+      </div>
+      <div id="selisihAdminMsg" class="admin-muted" style="margin:10px 0;white-space:pre-wrap"></div>
+      <div class="selisih-admin-list-wrap">
+        <table class="selisih-admin-table">
+          <thead><tr><th>Toko</th><th>File</th><th>Upload</th><th>Berakhir</th><th>Status</th><th>Aksi</th></tr></thead>
+          <tbody id="selisihAdminBody"><tr><td colspan="6">Belum ada file Selisih SO.</td></tr></tbody>
+        </table>
+      </div>`;
+    const po=wrap.querySelector('#poAdminCard');
+    const all=[...wrap.children];
+    const pps=wrap.querySelector('#ppsMasterAdminCard');
+    const anchor=all.find(x=>x.id==='poAdminCard') || pps;
+    if(anchor) anchor.insertAdjacentElement('afterend',card); else wrap.appendChild(card);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',inject); else inject();
+})();
+</script>
 <style id="admin-module-launcher-v3-fix">
 /* FIX: module cards must stay hidden until their icon is selected.
    Original app uses inline display:block on Master Produk during admin login;
@@ -4739,6 +4790,7 @@ async function deleteAdminUser(id){
     product:`<svg viewBox="0 0 24 24"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg>`,
     store:`<svg viewBox="0 0 24 24"><path d="M4 10h16v10H4z"/><path d="M3 10 5 4h14l2 6"/><path d="M8 10v2a2 2 0 0 0 4 0v-2a2 2 0 0 0 4 0v-2"/><path d="M8 20v-5h8v5"/></svg>`,
     po:`<svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v4h4"/><path d="M9 12h6M9 16h5"/><path d="M9 8h3"/></svg>`,
+    selisih:`<svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M7 9h10M7 13h6"/><path d="M16 16h.01"/></svg>`,
     user:`<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c.7-3.2 2.7-5 6-5s5.3 1.8 6 5"/><path d="M17 11v6M14 14h6"/></svg>`,
     payment:`<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/><circle cx="17" cy="15" r="2"/></svg>`,
     map:`<svg viewBox="0 0 24 24"><path d="M9 18 3 21V6l6-3 6 3 6-3v15l-6 3-6-3Z"/><path d="M9 3v15M15 6v15"/><path d="M12 8.5a2.5 2.5 0 1 0 0 5c1.4 0 2.5-1.2 2.5-2.5S13.4 8.5 12 8.5Z"/></svg>`,
@@ -4750,6 +4802,7 @@ async function deleteAdminUser(id){
     ['product','Master Produk','Kelola PLU & produk', 'product'],
     ['store','Master Toko','Kelola data toko', 'store'],
     ['po','PO Barang','Kelola purchase order', 'po'],
+    ['selisih','Selisih SO','Upload Excel per toko', 'selisih'],
     ['user','Tambah User','Buat akun user', 'user'],
     ['payment','Paket & Pembayaran','Masa aktif & pembayaran', 'payment'],
     ['map','Lokasi Semua User','Peta lokasi user', 'map'],
@@ -4759,10 +4812,10 @@ async function deleteAdminUser(id){
     const page=document.getElementById('adminPage'); if(!page) return;
     const wrap=page.querySelector('.admin-wrap'); if(!wrap || wrap.dataset.moduleHomeReady==='1') return;
     const cards=[...wrap.children].filter(el=>el.classList.contains('admin-card'));
-    if(cards.length<9) return;
+    if(cards.length<10) return;
     const header=cards[0];
-    const dashboard=cards[1], product=cards[2], store=cards[3], po=cards[4], user=cards[5], payment=cards[6], map=cards[7], users=cards[8];
-    const modules=[dashboard,product,store,po,user,payment,map,users];
+    const dashboard=cards[1], product=cards[2], selisih=cards[3], store=cards[4], po=cards[5], user=cards[6], payment=cards[7], map=cards[8], users=cards[9];
+    const modules=[dashboard,product,selisih,store,po,user,payment,map,users];
     const home=document.createElement('section'); home.className='admin-module-home'; home.id='adminModuleHome';
     const grid=document.createElement('div'); grid.className='admin-module-grid';
     defs.forEach(([key,name,sub])=>{
@@ -4771,7 +4824,7 @@ async function deleteAdminUser(id){
     });
     home.appendChild(grid);
     header.insertAdjacentElement('afterend',home);
-    const views={dashboard,product,store,po,user,payment,map,users};
+    const views={dashboard,product,store,po,selisih,user,payment,map,users};
     Object.keys(views).forEach(key=>{
       const card=views[key]; card.classList.add('admin-module-view'); card.dataset.adminModule=key;
       const back=document.createElement('button'); back.type='button'; back.className='admin-module-back'; back.innerHTML=ICONS.back+'<span>Kembali ke menu Admin</span>'; back.addEventListener('click',closeModule);
@@ -4792,6 +4845,868 @@ async function deleteAdminUser(id){
   if(typeof oldShowAdmin==='function'){
     window.showAdmin=function(profile,user){ const r=oldShowAdmin.apply(this,arguments); setTimeout(init,0); return r; };
   }
+})();
+</script>
+
+
+
+<style id="selisihSOAdminFilePickerFix">
+.selisih-file-picker{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:5px}
+.selisih-pick-file{min-height:42px;white-space:nowrap}
+.selisih-file-name{display:block;color:#aeb5c3;font-size:13px;line-height:1.35;overflow-wrap:anywhere}
+</style>
+<style id="selisihSOAdminStylesV1">
+.selisih-admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.selisih-admin-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.selisih-admin-list-wrap{overflow:auto;border:1px solid #303741;border-radius:14px}
+.selisih-admin-table{width:100%;border-collapse:collapse;min-width:760px}
+.selisih-admin-table th,.selisih-admin-table td{padding:10px;border-bottom:1px solid #2c333c;text-align:left;font-size:12px}
+.selisih-admin-table th{background:#171d24;color:#ffb13b}
+.selisih-admin-table td{color:#e9edf2}
+.selisih-admin-status-active{color:#79ffad;font-weight:800}
+.selisih-admin-status-expired{color:#ff8585;font-weight:800}
+.selisih-admin-delete{border:1px solid #67333a;background:#2a171b;color:#ff9aa3;border-radius:9px;padding:7px 10px;cursor:pointer}
+@media(max-width:650px){.selisih-admin-grid{grid-template-columns:1fr}}
+</style>
+<script id="selisihSOAdminLogicV1">
+(function(){
+  'use strict';
+  const BUCKET='selisih-so';
+  const ONE_HOUR=60*60*1000;
+  let stores=[];
+  function msg(t,ok=false){const e=document.getElementById('selisihAdminMsg');if(e){e.textContent=t||'';e.style.color=ok?'#79ffad':'';}}
+  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function fmt(v){if(!v)return '-';return new Date(v).toLocaleString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+  async function loadStores(){
+    const sel=document.getElementById('selisihAdminStore'); if(!sel)return;
+    const {data,error}=await supa.from('stores').select('id,code,name').order('code');
+    if(error){sel.innerHTML='<option value="">Gagal memuat toko</option>';msg('Gagal memuat toko: '+error.message);return;}
+    stores=data||[];
+    sel.innerHTML='<option value="">-- Pilih Toko --</option>'+stores.map(x=>`<option value="${esc(x.id)}">${esc(x.code)}${x.name?' — '+esc(x.name):''}</option>`).join('');
+  }
+  async function cleanupExpired(){
+    const now=new Date().toISOString();
+    const {data,error}=await supa.from('selisih_so_files').select('id,storage_path').lte('expires_at',now);
+    if(error)return;
+    for(const x of (data||[])){
+      if(x.storage_path) await supa.storage.from(BUCKET).remove([x.storage_path]);
+      await supa.from('selisih_so_files').delete().eq('id',x.id);
+    }
+  }
+  async function loadList(){
+    const body=document.getElementById('selisihAdminBody');if(!body)return;
+    await cleanupExpired();
+    const {data,error}=await supa.from('selisih_so_files')
+      .select('id,store_id,original_filename,uploaded_at,expires_at,storage_path,stores(code,name)')
+      .order('uploaded_at',{ascending:false});
+    if(error){body.innerHTML=`<tr><td colspan="6">Gagal memuat: ${esc(error.message)}</td></tr>`;return;}
+    if(!data?.length){body.innerHTML='<tr><td colspan="6">Belum ada file Selisih SO.</td></tr>';return;}
+    body.innerHTML=data.map(x=>{
+      const expired=new Date(x.expires_at).getTime()<=Date.now();
+      const st=x.stores||{};return `<tr>
+        <td><b>${esc(st.code||x.store_id)}</b>${st.name?' — '+esc(st.name):''}</td>
+        <td>${esc(x.original_filename)}</td><td>${fmt(x.uploaded_at)}</td><td>${fmt(x.expires_at)}</td>
+        <td class="${expired?'selisih-admin-status-expired':'selisih-admin-status-active'}">${expired?'Kadaluarsa':'Aktif'}</td>
+        <td><button type="button" class="selisih-admin-delete" data-del-selisih="${esc(x.id)}">Hapus</button></td></tr>`;
+    }).join('');
+    body.querySelectorAll('[data-del-selisih]').forEach(b=>b.addEventListener('click',()=>deleteFile(b.dataset.delSelisih)));
+  }
+  async function deleteFile(id){
+    if(!confirm('Hapus file Selisih SO ini?'))return;
+    const {data,error}=await supa.from('selisih_so_files').select('storage_path').eq('id',id).maybeSingle();
+    if(error){msg(error.message);return;}
+    if(data?.storage_path) await supa.storage.from(BUCKET).remove([data.storage_path]);
+    const d=await supa.from('selisih_so_files').delete().eq('id',id);
+    if(d.error){msg('Gagal menghapus: '+d.error.message);return;}
+    msg('File berhasil dihapus.',true);await loadList();
+  }
+  async function upload(){
+    const sel=document.getElementById('selisihAdminStore'), input=document.getElementById('selisihAdminFile');
+    const storeId=sel?.value, file=input?.files?.[0];
+    if(!storeId){msg('Pilih toko terlebih dahulu.');return;}
+    if(!file){msg('Pilih file Excel terlebih dahulu.');return;}
+    if(!/\.(xlsx|xls|csv)$/i.test(file.name)){msg('File harus .xlsx, .xls, atau .csv.');return;}
+    try{
+      msg('Menyiapkan upload...');
+      // Hapus file aktif/lama untuk toko yang sama.
+      const {data:old,error:oldErr}=await supa.from('selisih_so_files').select('id,storage_path').eq('store_id',storeId);
+      if(oldErr)throw oldErr;
+      for(const x of (old||[])){
+        if(x.storage_path) await supa.storage.from(BUCKET).remove([x.storage_path]);
+        await supa.from('selisih_so_files').delete().eq('id',x.id);
+      }
+      const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+      const path=`${storeId}/${Date.now()}-${crypto.randomUUID()}-${safe}`;
+      const up=await supa.storage.from(BUCKET).upload(path,file,{contentType:file.type||'application/octet-stream',upsert:false});
+      if(up.error)throw up.error;
+      const now=new Date(), expires=new Date(now.getTime()+ONE_HOUR);
+      const ins=await supa.from('selisih_so_files').insert({
+        store_id:storeId,original_filename:file.name,storage_path:path,
+        uploaded_at:now.toISOString(),expires_at:expires.toISOString()
+      });
+      if(ins.error){await supa.storage.from(BUCKET).remove([path]);throw ins.error;}
+      msg(`Berhasil upload ${file.name}. Aktif sampai ${fmt(expires.toISOString())}.`,true);
+      input.value='';if(document.getElementById('selisihAdminFileName'))document.getElementById('selisihAdminFileName').textContent='Belum ada file dipilih';await loadList();
+    }catch(e){console.error(e);msg('Gagal upload Selisih SO: '+(e?.message||e));}
+  }
+  function init(){
+    const card=document.getElementById('selisihSOAdminCard');if(!card||card.dataset.ready)return;
+    card.dataset.ready='1';
+    const fileInput=document.getElementById('selisihAdminFile');
+    const pick=document.getElementById('selisihAdminPickFile');
+    const fileName=document.getElementById('selisihAdminFileName');
+    pick?.addEventListener('click',()=>fileInput?.click());
+    fileInput?.addEventListener('change',()=>{
+      const f=fileInput.files?.[0];
+      if(fileName) fileName.textContent=f ? ('📎 '+f.name) : 'Belum ada file dipilih';
+    });
+    document.getElementById('selisihAdminUpload')?.addEventListener('click',upload);
+    document.getElementById('selisihAdminRefresh')?.addEventListener('click',async()=>{await loadStores();await loadList();});
+    loadStores();loadList();
+    setInterval(loadList,60000);
+  }
+  window.initSelisihSOAdmin=init;
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+<style id="user-module-launcher-v13">
+/* USER MODULE LAUNCHER — hanya mengatur tampilan/navigation, fitur lama tetap digunakan. */
+.user-module-home{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0 22px;padding:18px;border:1px solid #30363e;border-radius:22px;background:linear-gradient(145deg,#11161c,#0b0e12);box-shadow:0 10px 28px rgba(0,0,0,.22)}
+.user-module-home-title{grid-column:1/-1;margin:0 0 2px;padding:0 2px;font-size:25px;font-weight:900;color:#fff}
+.user-module-home-sub{grid-column:1/-1;margin:0 0 4px;padding:0 2px;color:#8f99a8;font-size:15px}
+.user-module-tile{appearance:none;border:1px solid #303843;background:linear-gradient(145deg,#151b22,#0e1319);color:#fff;border-radius:20px;min-height:150px;padding:18px 10px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.18);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,background .18s ease}
+.user-module-tile:hover{transform:translateY(-2px);border-color:#9a5b1b;box-shadow:0 12px 28px rgba(0,0,0,.28)}
+.user-module-tile:active{transform:scale(.98)}
+.user-module-icon{width:62px;height:62px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(145deg,#342615,#17130f);border:1px solid #744719;margin-bottom:10px;box-shadow:inset 0 1px rgba(255,255,255,.08),0 6px 15px rgba(0,0,0,.25);font-size:31px}
+.user-module-name{font-size:17px;font-weight:900;line-height:1.2}
+.user-module-sub{font-size:12px;color:#8f99a8;margin-top:5px}
+.user-module-view{display:none!important}
+.user-module-view.active{display:block!important;animation:userModuleIn .18s ease-out}
+@keyframes userModuleIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.user-module-head{display:flex;align-items:center;gap:14px;margin:18px 0 12px;padding:0 2px}
+.user-module-back{appearance:none;display:inline-flex;align-items:center;gap:8px;border:1px solid #353c46;background:#171d24;color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer;margin:0 0 12px}
+.user-module-back .arrow{font-size:25px;line-height:1;color:#ffb13b}
+.user-module-head-icon{width:50px;height:50px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(145deg,#342615,#17130f);border:1px solid #744719;font-size:25px}
+.user-module-head-title{font-size:25px;font-weight:900;color:#fff}
+.user-module-head-sub{font-size:14px;color:#8f99a8;margin-top:3px}
+.user-module-empty-home{display:none!important}
+@media(max-width:650px){.user-module-home{gap:10px;padding:16px;border-radius:20px}.user-module-tile{min-height:145px}.user-module-name{font-size:16px}.user-module-icon{width:58px;height:58px}}
+</style>
+
+
+<script id="user-module-launcher-v13-js">
+(function(){
+  function init(){
+    const shell=document.getElementById('appShell');
+    if(!shell || document.getElementById('userModuleHome')) return;
+    const countdown=document.getElementById('userCountdown');
+    const dbFile=document.getElementById('dbFile');
+    if(!countdown || !dbFile) return;
+
+    const dbFileCard=dbFile.closest('.card');
+    const brandCard=dbFileCard ? dbFileCard.previousElementSibling : null;
+    const subscription=document.getElementById('subscriptionUserCard');
+    const po=document.getElementById('userPoCard');
+    const ios=document.getElementById('iosBanner');
+    const error=document.getElementById('error');
+    const ok=document.getElementById('ok');
+    const result=document.getElementById('result');
+    const appResults=document.getElementById('appTransactionResults');
+    const rules=document.querySelector('.rules-btn');
+    const support=rules ? rules.nextElementSibling : null;
+
+    const featureNodes=[brandCard,dbFileCard,ios,error,ok,result,appResults,rules,support,subscription,po].filter(Boolean);
+    featureNodes.forEach(n=>n.classList.add('user-module-view'));
+
+    const home=document.createElement('section');
+    home.id='userModuleHome';
+    home.className='user-module-home';
+    home.innerHTML=`
+      <h2 class="user-module-home-title">Menu User</h2>
+      <div class="user-module-home-sub">Pilih fitur yang ingin digunakan</div>
+      <button type="button" class="user-module-tile" data-user-module="transaction">
+        <div class="user-module-icon">📊</div><div class="user-module-name">Hasil Transaksi</div><div class="user-module-sub">Transaksi, member &amp; PPS</div>
+      </button>
+      <button type="button" class="user-module-tile" data-user-module="po">
+        <div class="user-module-icon">📦</div><div class="user-module-name">PO Barang</div><div class="user-module-sub">PO aktif untuk toko</div>
+      </button>
+            <button type="button" class="user-module-tile" data-user-module="selisih">
+        <div class="user-module-icon">🧾</div><div class="user-module-name">Selisih SO</div><div class="user-module-sub">SO + On Hand</div>
+      </button>
+      <button type="button" class="user-module-tile" data-user-module="subscription">
+        <div class="user-module-icon">💳</div><div class="user-module-name">Perpanjang Masa Aktif</div><div class="user-module-sub">Paket &amp; pembayaran</div>
+      </button>`;
+    countdown.insertAdjacentElement('afterend',home);
+
+    const originalText=new Map();
+    function setVisible(nodes,on){nodes.forEach(n=>{n.classList.toggle('active',!!on);});}
+    function scrollTop(){window.scrollTo({top:0,behavior:'smooth'});}
+
+    function makeHead(title,sub,icon){
+      const h=document.createElement('div'); h.className='user-module-head';
+      h.innerHTML=`<div class="user-module-head-icon">${icon}</div><div><div class="user-module-head-title">${title}</div><div class="user-module-head-sub">${sub}</div></div>`;
+      return h;
+    }
+
+    function addBack(node){
+      if(!node || node.querySelector('.user-module-back')) return;
+      const b=document.createElement('button'); b.type='button'; b.className='user-module-back';
+      b.innerHTML='<span class="arrow">‹</span><span>Kembali ke menu User</span>';
+      b.addEventListener('click',()=>open('home'));
+      node.insertBefore(b,node.firstChild);
+    }
+
+    if(brandCard){
+      const wrap=document.createElement('div');
+      wrap.className='user-module-view'; wrap.dataset.userView='transaction';
+      const head=makeHead('Hasil Transaksi','Pilih database lalu lihat hasil transaksi','📊');
+      wrap.appendChild(head);
+      addBack(wrap);
+      // Move existing transaction content into the module wrapper.
+      const parent=brandCard.parentNode;
+      parent.insertBefore(wrap,brandCard);
+      featureNodes.filter(n=>n!==subscription && n!==po).forEach(n=>{
+        if(n!==wrap && n.parentNode===parent) wrap.appendChild(n);
+      });
+      // The wrapper now owns the transaction view.
+      featureNodes.filter(n=>n!==subscription && n!==po).forEach(n=>n.classList.remove('user-module-view'));
+      wrap.classList.add('user-module-view');
+      window.__userTransactionView=wrap;
+    }
+
+    if(po){
+      const head=makeHead('PO Barang','PO aktif untuk toko Anda','📦');
+      po.insertBefore(head,po.firstChild);
+      addBack(po);
+      window.__userPoView=po;
+    }
+    if(subscription){
+      const head=makeHead('Perpanjang Masa Aktif','Paket & pembayaran','💳');
+      subscription.insertBefore(head,subscription.firstChild);
+      addBack(subscription);
+      window.__userSubscriptionView=subscription;
+    }
+
+    // Selisih SO: tampilan User saja, view-only. Data dapat diisi oleh modul/backend
+    // melalui window.setSelisihSOData(rows) tanpa mengubah modul transaksi/PO.
+    const selisih=document.createElement('section');
+    selisih.id='userSelisihSOView';
+    selisih.className='user-module-view';
+    selisih.innerHTML=`
+      <div class="selisih-so-top-actions">
+        <button type="button" class="user-module-back" data-selisih-back>
+          <span class="arrow">‹</span><span>Kembali ke menu User</span>
+        </button>
+        <button type="button" class="selisih-so-contact-admin" data-selisih-contact-admin>
+          <span>💬</span><span>Hubungi Admin</span>
+        </button>
+      </div>
+      <div class="user-module-head">
+        <div class="user-module-head-icon">🧾</div>
+        <div>
+          <div class="user-module-head-title">Selisih SO</div>
+          <div class="user-module-head-sub">Tidak semua item bisa cek oh sedang so yah, jika oh 0 fisik 4 tapi rupiah masih selisih artinya item tersebut tidak bisa di cek oh saat sedang so.</div>
+        </div>
+      </div>
+      <div class="card selisih-so-card">
+        <div class="selisih-so-title">SELISIH SO</div>
+        <div class="selisih-so-meta">
+          <span id="selisihSOStore">Toko: -</span>
+          <span id="selisihSODate">Tanggal SO: -</span>
+        </div>
+        <div class="selisih-so-toolbar">
+          <button type="button" class="selisih-so-btn rupiah" data-so-action="rupiah">🔥 Filter Rupiah Terbesar</button>
+          <button type="button" class="selisih-so-btn rak" data-so-action="rak">📦 Urutkan per Rak</button>
+          <button type="button" class="selisih-so-btn pilih" data-so-action="pilih">📦 Pilih Rak</button>
+        </div>
+        <div id="selisihSORakMenu" class="selisih-so-rak-menu" hidden>
+          <select id="selisihSORakSelect" class="selisih-so-select">
+            <option value="">Semua Rak</option>
+          </select>
+        </div>
+        <div id="selisihSOStatus" class="selisih-so-status">Data Selisih SO belum tersedia.</div>
+        <div class="selisih-so-table-wrap">
+          <table class="selisih-so-table">
+            <thead>
+              <tr>
+                <th>PLU</th><th>Nama Barang</th><th>Rack</th>
+                <th>QTY Awal</th><th>Selisih QTY</th><th>OH</th><th>Selisih Rupiah</th>
+              </tr>
+            </thead>
+            <tbody id="selisihSOTbody"></tbody>
+          </table>
+        </div>
+        <div id="selisihSOTotal" class="selisih-so-total">TOTAL SELISIH RUPIAH <b>Rp 0</b></div>
+        <div id="selisihSOSummary" class="selisih-so-summary" hidden>
+          <div class="selisih-so-summary-row"><span>Total Item SO</span><b id="selisihSOTotalItemSO">0</b></div>
+          <div class="selisih-so-summary-row"><span>Total Item Selisih</span><b id="selisihSOTotalItemSelisih">0</b></div>
+          <div class="selisih-so-summary-row"><span>Persentasi Ketidaksesuaian SO</span><b id="selisihSOPercentage">0%</b></div>
+        </div>
+
+      </div>`;
+    selisih.querySelector('[data-selisih-back]').addEventListener('click',()=>open('home'));
+    selisih.querySelector('[data-selisih-contact-admin]').addEventListener('click', async ()=>{
+      // Hubungi Admin: ambil nomor dari subscription_settings. Jika policy/RLS
+      // user tidak mengizinkan membaca setting, gunakan nomor admin utama yang
+      // sudah dipakai modul WhatsApp aplikasi sebagai fallback.
+      try{
+        let num = (typeof window.getWaAdminNumber==='function') ? window.getWaAdminNumber() : '';
+        if(!num && typeof window.loadWaAdminNumber==='function'){
+          try{ num = await window.loadWaAdminNumber(); }catch(e){ console.warn('Nomor WA admin:',e); }
+        }
+        num=String(num||'').replace(/\D/g,'');
+        if(!num && typeof WA_NUMBER!=='undefined') num=String(WA_NUMBER||'').replace(/\D/g,'');
+        if(!num){
+          alert('Nomor WhatsApp Admin belum diatur.');
+          return;
+        }
+        const profile=(typeof userLocationProfile!=='undefined' && userLocationProfile) ? userLocationProfile : {};
+        let storeCode='-';
+        try{ storeCode=await getUserStoreCode(); }catch(e){ console.warn('Kode toko:',e); }
+        const name=String(profile?.full_name||profile?.username||'').trim() || String(document.getElementById('authUserName')?.textContent||'').trim() || '-';
+        const date=new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date());
+        const msg=[
+          'Halo Admin, saya mengajukan Selisih SO.',
+          '',
+          `Nama User: ${name}`,
+        `Toko: ${storeCode}`,
+          `Tanggal: ${date}`,
+          '',
+          'Mohon dibantu untuk pengajuan Selisih SO saya. Terima kasih.'
+        ].join('\n');
+        const url=`https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
+        // location.href tetap dianggap sebagai navigasi dari klik user,
+        // sehingga lebih kompatibel di Android/iPhone daripada window.open
+        // setelah proses async.
+        window.location.assign(url);
+      }catch(err){
+        console.error('Hubungi Admin Selisih SO gagal:',err);
+        alert('Tidak dapat membuka WhatsApp Admin. Silakan coba lagi.');
+      }
+    });
+    home.parentNode.insertBefore(selisih, home);
+    window.__userSelisihView=selisih;
+
+    function allViews(){return [window.__userTransactionView,window.__userPoView,window.__userSubscriptionView,window.__userSelisihView].filter(Boolean);}
+    function open(which){
+      home.style.display=(which==='home'?'grid':'none');
+      allViews().forEach(v=>v.classList.remove('active'));
+      if(which==='transaction' && window.__userTransactionView) window.__userTransactionView.classList.add('active');
+      if(which==='po' && window.__userPoView) window.__userPoView.classList.add('active');
+      if(which==='subscription' && window.__userSubscriptionView) window.__userSubscriptionView.classList.add('active');
+      if(which==='selisih' && window.__userSelisihView){
+        window.__userSelisihView.classList.add('active');
+        if(typeof window.initUserSelisihSO==='function') window.initUserSelisihSO();
+        if(typeof window.refreshUserSelisihSOMeta==='function') window.refreshUserSelisihSOMeta();
+      }
+      scrollTop();
+    }
+
+    home.querySelectorAll('[data-user-module]').forEach(btn=>btn.addEventListener('click',()=>open(btn.dataset.userModule)));
+    window.userOpenModule=open;
+    open('home');
+
+    // Saat appShell dibuka ulang setelah login/refresh, pastikan menu kembali menjadi halaman awal.
+    const observer=new MutationObserver(()=>{
+      if(shell.style.display!=='none' && !home.dataset.ready){home.dataset.ready='1';open('home');}
+    });
+    observer.observe(shell,{attributes:true,attributeFilter:['style']});
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+})();
+</script>
+
+
+<style id="userSelisihSOStylesV1">
+  .selisih-so-top-actions{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+  .selisih-so-top-actions .user-module-back{margin:0;flex:1;min-width:180px}
+  .selisih-so-contact-admin{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:10px 14px;border:1px solid #176a43;border-radius:12px;background:#0d4d2d;color:#8dffba;font-weight:900;cursor:pointer;white-space:nowrap}
+  .selisih-so-contact-admin:active{transform:scale(.985)}
+  .selisih-so-card{
+    background:linear-gradient(145deg,#121315,#0e0f10);
+    border:1px solid #2a2d31;border-radius:22px;padding:18px;margin-top:4px;
+    box-shadow:0 10px 30px #0006;overflow:hidden;
+  }
+  .selisih-so-title{text-align:center;font-size:25px;font-weight:950;letter-spacing:.2px}
+  .selisih-so-meta{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;color:#aeb5c3;font-size:12px;margin:7px 0 15px}
+  .selisih-so-toolbar{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .selisih-so-btn{
+    border:1px solid #3b4149;border-radius:13px;padding:12px 11px;
+    color:#fff;background:linear-gradient(145deg,#1a1d21,#121417);
+    font-weight:850;font-size:13px;cursor:pointer;box-shadow:0 6px 18px #0004;
+  }
+  .selisih-so-btn.rupiah{border-color:#87520f;color:#ffbf55}
+  .selisih-so-btn.rak{border-color:#344f76;color:#a9cbff}
+  .selisih-so-btn.pilih{border-color:#75451b;color:#ffb45d}
+  .selisih-so-btn:active{transform:scale(.985)}
+  .selisih-so-rak-menu{margin-top:10px}
+  .selisih-so-select{
+    width:100%;padding:12px;border-radius:12px;border:1px solid #414750;
+    background:#111317;color:#fff;outline:none;font-weight:750;
+  }
+  .selisih-so-status{margin:12px 0;color:#8f98a8;font-size:12px;line-height:1.45}
+  .selisih-so-table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:14px}
+  .selisih-so-table{width:100%;border-collapse:collapse;min-width:900px;background:#111214}
+  .selisih-so-table th,.selisih-so-table td{
+    padding:9px 8px;border-bottom:1px solid rgba(255,255,255,.07);
+    text-align:left;vertical-align:top;font-size:11px;
+  }
+  .selisih-so-table th{color:#aeb5c3;font-size:10px;text-transform:uppercase;letter-spacing:.25px;background:#181a1d;position:sticky;top:0}
+  .selisih-so-table td:nth-child(1){color:#79ffad;font-weight:850;white-space:nowrap}
+  .selisih-so-table td:nth-child(4){white-space:nowrap;font-weight:800}
+  .selisih-so-table td:nth-child(6){font-weight:900;white-space:nowrap}
+  .selisih-so-total{
+    margin-top:12px;padding:13px 14px;border-radius:13px;
+    background:linear-gradient(145deg,#241a0c,#17130e);
+    border:1px solid #6e491a;color:#ffd58a;font-size:13px;font-weight:850;
+    display:flex;justify-content:space-between;gap:12px;
+  }
+  .selisih-so-total b{font-size:16px;color:#fff;white-space:nowrap}
+  .selisih-so-rack-total-row td{background:#fff3c4;border-top:1px solid #555;border-bottom:1px solid #555;font-weight:800;}
+  .selisih-so-rack-total-label{text-align:right !important;padding-right:10px !important;}
+  .selisih-so-rack-total-value{text-align:left !important;color:#198038;white-space:nowrap;}
+  .selisih-so-viewonly{text-align:center;color:#7f8998;font-size:11px;margin-top:10px}
+  .selisih-so-summary{margin-top:10px;border:1px solid rgba(255,214,82,.28);border-radius:10px;overflow:hidden;background:rgba(255,214,82,.045)}
+  .selisih-so-summary-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.07);font-size:13px}
+  .selisih-so-summary-row:last-child{border-bottom:0}
+  .selisih-so-summary-row span{color:#aeb5c3}
+  .selisih-so-summary-row b{color:#79ffad;white-space:nowrap;text-align:right}
+  @media(max-width:650px){
+    .selisih-so-card{padding:14px;border-radius:19px}
+    .selisih-so-top-actions{gap:7px}
+    .selisih-so-top-actions .user-module-back{min-width:0}
+    .selisih-so-contact-admin{flex:1;min-width:150px;font-size:12px;padding:10px 11px}
+    .selisih-so-title{font-size:22px}
+    .selisih-so-toolbar{grid-template-columns:1fr}
+    .selisih-so-btn{font-size:13px;padding:11px}
+    .selisih-so-summary-row{font-size:12px}
+  }
+</style>
+<script id="userSelisihSOLogicV1">
+(function(){
+  'use strict';
+  let rows=[];
+  let mode='default';
+  let initialized=false;
+
+  const esc=v=>{
+    const s=String(v??'');
+    return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  };
+  // Parser angka Selisih Rupiah:
+  // Mendukung format Excel US "202,044.15" dan Indonesia "202.044,15".
+  const num=v=>{
+    if(typeof v==='number') return Number.isFinite(v)?v:0;
+    let s=String(v??'').trim();
+    if(!s)return 0;
+    s=s.replace(/[^\d,.\-]/g,'');
+    if(!s)return 0;
+
+    const neg=s.startsWith('-');
+    s=s.replace(/-/g,'');
+    const hasComma=s.includes(',');
+    const hasDot=s.includes('.');
+
+    if(hasComma && hasDot){
+      // Separator yang muncul TERAKHIR dianggap separator desimal.
+      // Contoh:
+      // 202,044.15 -> 202044.15
+      // 202.044,15 -> 202044.15
+      if(s.lastIndexOf('.') > s.lastIndexOf(',')){
+        s=s.replace(/,/g,'');
+      }else{
+        s=s.replace(/\./g,'').replace(',', '.');
+      }
+    }else if(hasComma){
+      const parts=s.split(',');
+      // Satu/tiga digit setelah koma = ribuan pada laporan ini,
+      // kecuali 1-2 digit yang jelas merupakan desimal.
+      if(parts.length===2 && parts[1].length<=2){
+        s=parts[0]+'.'+parts[1];
+      }else{
+        s=s.replace(/,/g,'');
+      }
+    }else if(hasDot){
+      const parts=s.split('.');
+      if(parts.length>2){
+        s=s.replace(/\./g,'');
+      }else if(parts.length===2 && parts[1].length>2){
+        s=s.replace(/\./g,'');
+      }
+      // Jika 1-2 digit setelah titik, biarkan sebagai desimal.
+    }
+
+    const n=Number(s);
+    return Number.isFinite(n) ? (neg ? -n : n) : 0;
+  };
+  const money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',minimumFractionDigits:0,maximumFractionDigits:2,useGrouping:true}).format(num(n));
+  const pick=r=>({
+    plu:r.plu??r.PLU??'',
+    name:r.product_name??r.productName??r.nama_barang??r['Nama Barang']??r.name??'',
+    rack:r.rack??r.Rack??r.rak??r.RAK??'',
+    qtyAwal:r.qty_awal??r.qtyAwal??r['QTY Awal']??r.qty_awal_so??'',
+    selisihRupiah:r.selisih_rupiah??r.selisihRupiah??r['Selisih Rupiah']??r.selisih_rp??0,
+    selisihQty:r.selisih_qty??r.selisihQty??r['Selisih QTY']??r.selisi_qty??0,
+    oh:r.oh??r.OH??r.stock_onhand??r['Stock Onhand Toko']??'',
+    store:r.store_code??r.storeCode??r.toko??'',
+    date:r.so_date??r.soDate??r.tanggal_so??r['Tanggal SO']??''
+  });
+
+  function render(){
+    const body=document.getElementById('selisihSOTbody');
+    const status=document.getElementById('selisihSOStatus');
+    const total=document.getElementById('selisihSOTotal');
+    const select=document.getElementById('selisihSORakSelect');
+    const summaryBox=document.getElementById('selisihSOSummary');
+    const totalItemSO=document.getElementById('selisihSOTotalItemSO');
+    const totalItemSelisih=document.getElementById('selisihSOTotalItemSelisih');
+    const percentage=document.getElementById('selisihSOPercentage');
+    if(!body||!status||!total)return;
+
+    let data=rows.map(pick);
+    const selected=select?.value||'';
+    if(selected)data=data.filter(r=>String(r.rack)===selected);
+
+    if(mode==='rupiah')data.sort((a,b)=>Math.abs(num(b.selisihRupiah))-Math.abs(num(a.selisihRupiah)));
+    if(mode==='rak')data.sort((a,b)=>String(a.rack).localeCompare(String(b.rack),'id',{numeric:true})||String(a.name).localeCompare(String(b.name),'id'));
+
+    const calculatedSum=data.reduce((n,r)=>n+num(r.selisihRupiah),0);
+    const excelTotal = (window.__selisihSOSummary && window.__selisihSOSummary.hasExcelTotal)
+      ? num(window.__selisihSOSummary.totalSelisihRupiah)
+      : calculatedSum;
+    const displayTotal = selected ? calculatedSum : excelTotal;
+
+    if(!data.length){
+      body.innerHTML='<tr><td colspan="7" style="text-align:center;color:#7f8998;padding:22px">Belum ada data Selisih SO.</td></tr>';
+    }else if(mode==='rak'){
+      // Total setiap rak ditempatkan tepat di bawah item-item rak tersebut.
+      const html=[];
+      let currentRack=null;
+      let rackTotal=0;
+      data.forEach((r,i)=>{
+        const rack=String(r.rack||'-').trim()||'-';
+        if(currentRack!==null && rack!==currentRack){
+          html.push(`<tr class="selisih-so-rack-total-row"><td colspan="6" class="selisih-so-rack-total-label">TOTAL SELISIH RACK ${esc(currentRack)}</td><td class="selisih-so-rack-total-value">${money(rackTotal)}</td></tr>`);
+          rackTotal=0;
+        }
+        currentRack=rack;
+        rackTotal+=num(r.selisihRupiah);
+        html.push(`<tr>
+          <td>${esc(r.plu||'-')}</td><td>${esc(r.name||'-')}</td>
+          <td>${esc(r.rack||'-')}</td><td>${esc(r.qtyAwal??'-')}</td>
+          <td>${esc(r.selisihQty??'-')}</td><td>${esc(r.oh??'-')}</td><td>${money(r.selisihRupiah)}</td>
+        </tr>`);
+        if(i===data.length-1){
+          html.push(`<tr class="selisih-so-rack-total-row"><td colspan="6" class="selisih-so-rack-total-label">TOTAL SELISIH RACK ${esc(currentRack)}</td><td class="selisih-so-rack-total-value">${money(rackTotal)}</td></tr>`);
+        }
+      });
+      body.innerHTML=html.join('');
+    }else{
+      body.innerHTML=data.map(r=>`<tr>
+        <td>${esc(r.plu||'-')}</td><td>${esc(r.name||'-')}</td>
+        <td>${esc(r.rack||'-')}</td><td>${esc(r.qtyAwal??'-')}</td>
+        <td>${esc(r.selisihQty??'-')}</td><td>${esc(r.oh??'-')}</td><td>${money(r.selisihRupiah)}</td>
+      </tr>`).join('');
+    }
+
+    status.textContent=rows.length
+      ? `${data.length.toLocaleString('id-ID')} data ditampilkan • View Only`
+      : 'Data Selisih SO belum tersedia.';
+    total.innerHTML=`TOTAL SELISIH RUPIAH <b>${money(displayTotal)}</b>`;
+
+    const sm=window.__selisihSOSummary||{};
+    if(summaryBox){
+      const hasSummary=sm.totalItemSO!==null || sm.totalItemSelisih!==null || sm.percentage;
+      summaryBox.hidden=!hasSummary;
+      if(totalItemSO)totalItemSO.textContent=sm.totalItemSO!==null ? Number(sm.totalItemSO).toLocaleString('id-ID') : '0';
+      if(totalItemSelisih)totalItemSelisih.textContent=sm.totalItemSelisih!==null ? Number(sm.totalItemSelisih).toLocaleString('id-ID') : '0';
+      if(percentage)percentage.textContent=sm.percentage || '0%';
+    }
+  }
+
+  function fillRacks(){
+    const select=document.getElementById('selisihSORakSelect');if(!select)return;
+    const current=select.value;
+    const racks=[...new Set(rows.map(pick).map(r=>String(r.rack??'').trim()).filter(Boolean))]
+      .sort((a,b)=>a.localeCompare(b,'id',{numeric:true}));
+    select.innerHTML='<option value="">Semua Rak</option>'+racks.map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join('');
+    if(racks.includes(current))select.value=current;
+  }
+
+  function getCurrentDateLabel(){
+    return new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date());
+  }
+
+  async function getUserStoreCode(){
+    const profile=(typeof userLocationProfile!=='undefined' && userLocationProfile) ? userLocationProfile : {};
+    let code=String(profile?.store_code||profile?.storeCode||profile?.store?.code||profile?.kode_toko||profile?.kodeToko||'').trim();
+    if(code) return code;
+
+    // Ambil store_id dari profil terbaru bila userLocationProfile sudah ter-refresh.
+    let storeId=String(profile?.store_id||'').trim();
+    if(!storeId && typeof supa!=='undefined'){
+      try{
+        const {data:{user}}=await supa.auth.getUser();
+        if(user?.id){
+          const {data:p}=await supa.from('profiles').select('store_id').eq('id',user.id).maybeSingle();
+          storeId=String(p?.store_id||'').trim();
+        }
+      }catch(e){ console.warn('Gagal mengambil store_id user:',e); }
+    }
+
+    if(storeId && typeof supa!=='undefined'){
+      try{
+        const {data,error}=await supa.from('stores').select('code').eq('id',storeId).maybeSingle();
+        if(!error && data?.code) return String(data.code).trim();
+        if(error) console.warn('Gagal mengambil kode toko:',error.message);
+      }catch(e){ console.warn('Gagal mengambil kode toko user:',e); }
+    }
+
+    // location_name biasanya berbentuk "KODE — Nama Toko"; gunakan hanya sebagai fallback.
+    const loc=String(profile?.location_name||'').trim();
+    if(loc){
+      const m=loc.match(/^([^—-]+?)\s*[—-]\s*.+$/);
+      if(m && m[1]) return m[1].trim();
+    }
+    return '-';
+  }
+
+  async function refreshUserMeta(){
+    const se=document.getElementById('selisihSOStore');
+    const de=document.getElementById('selisihSODate');
+    const code=await getUserStoreCode();
+    if(se) se.textContent='Toko: '+code;
+    if(de) de.textContent='Tanggal SO: '+getCurrentDateLabel();
+  }
+
+  function init(){
+    if(initialized)return;
+    initialized=true;
+    const view=document.getElementById('userSelisihSOView');if(!view)return;
+    refreshUserMeta();
+    loadSelisihSOFromServer();
+    view.querySelectorAll('[data-so-action]').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const action=btn.dataset.soAction;
+        if(action==='rupiah'){mode='rupiah';render();}
+        if(action==='rak'){mode='rak';render();}
+        if(action==='pilih'){
+          const menu=document.getElementById('selisihSORakMenu');
+          if(menu)menu.hidden=!menu.hidden;
+        }
+      });
+    });
+    const select=document.getElementById('selisihSORakSelect');
+    if(select)select.addEventListener('change',render);
+    render();
+  }
+
+  window.initUserSelisihSO=init;
+  window.refreshUserSelisihSOMeta=refreshUserMeta;
+  window.setSelisihSOData=function(data,meta={}){
+    rows=Array.isArray(data)?data:[];
+    window.__selisihSOSummary={
+      totalSelisihRupiah: meta?.totalSelisihRupiah ?? null,
+      totalItemSO: meta?.totalItemSO ?? null,
+      totalItemSelisih: meta?.totalItemSelisih ?? null,
+      percentage: meta?.percentage ?? '',
+      hasExcelTotal: meta?.hasExcelTotal===true
+    };
+    // Identitas pada halaman User selalu mengikuti akun User dan tanggal perangkat saat ini.
+    // meta.store/meta.date tetap diterima untuk kompatibilitas, tetapi tidak dipakai untuk mengganti tampilan.
+    refreshUserMeta();
+    fillRacks();render();
+  };
+  window.clearSelisihSOData=function(){
+    rows=[];mode='default';
+    window.__selisihSOSummary={totalSelisihRupiah:null,totalItemSO:null,totalItemSelisih:null,percentage:'',hasExcelTotal:false};
+    fillRacks();render();
+  };
+  async function loadSelisihSOFromServer(){
+    try{
+      const profile=(typeof userLocationProfile!=='undefined' && userLocationProfile) ? userLocationProfile : {};
+      let storeId=String(profile?.store_id||'').trim();
+      if(!storeId && typeof supa!=='undefined'){
+        const {data:u}=await supa.auth.getUser();
+        const uid=u?.user?.id||'';
+        if(uid){
+          const {data:p}=await supa.from('profiles').select('store_id').eq('id',uid).maybeSingle();
+          storeId=String(p?.store_id||'').trim();
+        }
+      }
+      if(!storeId){ window.clearSelisihSOData(); return; }
+
+      const now=new Date().toISOString();
+      const {data:file,error}=await supa.from('selisih_so_files')
+        .select('id,store_id,original_filename,storage_path,uploaded_at,expires_at')
+        .eq('store_id',storeId).gt('expires_at',now)
+        .order('uploaded_at',{ascending:false}).limit(1).maybeSingle();
+      if(error) throw error;
+      if(!file){
+        window.clearSelisihSOData();
+        const st=document.getElementById('selisihSOStatus');
+        if(st)st.textContent='Belum ada file Selisih SO aktif untuk toko Anda.';
+        return;
+      }
+
+      const dl=await supa.storage.from('selisih-so').download(file.storage_path);
+      if(dl.error) throw dl.error;
+      const buf=await dl.data.arrayBuffer();
+      const wb=XLSX.read(buf,{type:'array',cellText:true,cellDates:false});
+      if(!wb.SheetNames?.length) throw new Error('Excel tidak memiliki sheet.');
+      const ws=wb.Sheets[wb.SheetNames[0]];
+
+      // Excel Selisih SO dapat memiliki judul/keterangan beberapa baris di atas header.
+      // Karena itu jangan menganggap baris pertama selalu header.
+      const matrix=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+      const norm=s=>String(s??'').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
+      const aliases={
+        plu:['plu','kodeplu','kodebarang','kodeproduk'],
+        name:['namabarang','namaproduk','produk','productname','product','name','deskripsibarang'],
+        rack:['rack','rak','kode rak','koderak'],
+        qtyAwal:['qtyawal','stockawal','stokawal','qtyfisik','stockfisik','stokfisik','fisik','stockopname','qtyso'],
+        selisihRupiah:['selisihrupiah','selisihrp','selisihnilai','nilai selisih','rupiahsellisih'],
+        selisihQty:['selisihqty','selisih','plusminus','qtyselisih','plusminusqty'],
+        oh:['oh','stockonhand','stockonhandtoko','stockonhandtokoakhir','stockonhandakhir','stokonhand','stokonhandtoko','stokonhandtokoakhir','onhand','onhandtoko','onhandtokoakhir']
+      };
+      const scoreHeader=row=>{
+        const vals=row.map(norm);
+        let score=0;
+        for(const list of Object.values(aliases)) if(list.some(a=>vals.includes(norm(a)))) score++;
+        // Header Selisih SO biasanya punya minimal PLU + Rak + Selisih Rupiah.
+        if(vals.includes('plu'))score+=2;
+        if(vals.includes('rack')||vals.includes('rak'))score+=2;
+        if(vals.includes('selisihrupiah')||vals.includes('selisihrp'))score+=3;
+        return score;
+      };
+      let headerIndex=-1,bestScore=0;
+      for(let i=0;i<Math.min(matrix.length,50);i++){
+        const row=Array.isArray(matrix[i])?matrix[i]:[];
+        const sc=scoreHeader(row);
+        if(sc>bestScore){bestScore=sc;headerIndex=i;}
+      }
+      if(headerIndex<0 || bestScore<4){
+        throw new Error('Header Excel Selisih SO tidak ditemukan. Pastikan ada kolom PLU, Rack/Rak, dan Selisih Rupiah.');
+      }
+
+      const headers=matrix[headerIndex]||[];
+      const idxFor=names=>{
+        const wanted=names.map(norm);
+        return headers.findIndex(h=>wanted.includes(norm(h)));
+      };
+      const idx={};
+      for(const [k,names] of Object.entries(aliases)) idx[k]=idxFor(names);
+
+      // Fallback posisi untuk format laporan yang umum: PLU, Nama, Rack, Fisik, OH, +/- , Rupiah.
+      if(idx.plu<0) idx.plu=0;
+      if(idx.name<0) idx.name=1;
+      if(idx.rack<0) idx.rack=2;
+      if(idx.qtyAwal<0) idx.qtyAwal=3;
+      // OH WAJIB berasal dari kolom Stock Onhand Toko (Akhir) bila kolom tersebut ada.
+      // Jangan fallback ke posisi 4 karena pada laporan SO posisi 4 adalah Stock Fisik.
+      if(idx.oh<0){
+        const ohExact=headers.findIndex(h=>/stock\s*onhand\s*toko\s*\(\s*akhir\s*\)/i.test(String(h||'')));
+        if(ohExact>=0) idx.oh=ohExact;
+      }
+      if(idx.selisihQty<0) idx.selisihQty=5;
+      if(idx.selisihRupiah<0){
+        const rup=headers.findIndex(h=>/rupiah|rupia|nilai.*selisih|selisih.*nilai/i.test(String(h||'')));
+        if(rup>=0) idx.selisihRupiah=rup;
+      }
+
+      const cell=(row,i)=>i>=0 ? String(row?.[i]??'').trim() : '';
+      const rowsOut=[];
+
+      // Ambil ringkasan resmi yang tercetak di bagian bawah Excel.
+      // Contoh format laporan:
+      // TOTAL SELISIH RUPIAH | ... | -13,152,370.94
+      // Total Item SO | : | 4876
+      // Total Item Selisih | : | 1049
+      // Persentasi Ketidaksesuaian SO | : | 21.51 %
+      let summary={
+        totalSelisihRupiah:null,
+        totalItemSO:null,
+        totalItemSelisih:null,
+        percentage:'',
+        hasExcelTotal:false
+      };
+      const rowText=row=>Array.isArray(row)?row.map(v=>String(v??'').trim()).join(' ').trim():'';
+      const findValueAfterLabel=(row,labelRe)=>{
+        const vals=(Array.isArray(row)?row:[]).map(v=>String(v??'').trim()).filter(Boolean);
+        const idx=vals.findIndex(v=>labelRe.test(v));
+        if(idx>=0 && vals[idx+1]) return vals[idx+1].replace(/^:\s*/,'').trim();
+        // fallback: cari angka terakhir pada baris
+        return vals.slice().reverse().find(v=>/[-+]?\d[\d.,]*\s*%?$/.test(v))||'';
+      };
+
+      for(const rawRow of matrix){
+        const txt=rowText(rawRow);
+        const low=txt.toLowerCase();
+        if(!txt) continue;
+
+        if(/total\s+selisih\s+rupiah/i.test(low)){
+          const val=findValueAfterLabel(rawRow,/total\s+selisih\s+rupiah/i);
+          if(val){
+            summary.totalSelisihRupiah=num(val);
+            summary.hasExcelTotal=true;
+          }
+          continue;
+        }
+        if(/total\s+item\s+so/i.test(low)){
+          const val=findValueAfterLabel(rawRow,/total\s+item\s+so/i).replace(/[^\d-]/g,'');
+          if(val) summary.totalItemSO=Number(val);
+          continue;
+        }
+        if(/total\s+item\s+selisih/i.test(low)){
+          const val=findValueAfterLabel(rawRow,/total\s+item\s+selisih/i).replace(/[^\d-]/g,'');
+          if(val) summary.totalItemSelisih=Number(val);
+          continue;
+        }
+        if(/persentasi\s+ketidaksesuaian\s+so|persentase\s+ketidaksesuaian\s+so/i.test(low)){
+          const val=findValueAfterLabel(rawRow,/persentasi\s+ketidaksesuaian\s+so|persentase\s+ketidaksesuaian\s+so/i);
+          if(val) summary.percentage=/[%]/.test(val)?val:(val+' %');
+          continue;
+        }
+      }
+
+      for(let i=headerIndex+1;i<matrix.length;i++){
+        const row=Array.isArray(matrix[i])?matrix[i]:[];
+        if(!row.some(v=>String(v??'').trim()!=='')) continue;
+
+        // Jangan masukkan baris ringkasan Excel ke tabel item.
+        const txt=rowText(row).toLowerCase();
+        if(/total\s+selisih\s+rupiah|total\s+item\s+so|total\s+item\s+selisih|persentasi\s+ketidaksesuaian\s+so|persentase\s+ketidaksesuaian\s+so/.test(txt)) continue;
+
+        const out={
+          plu:cell(row,idx.plu),
+          name:cell(row,idx.name),
+          rack:cell(row,idx.rack),
+          qtyAwal:cell(row,idx.qtyAwal),
+          selisihRupiah:cell(row,idx.selisihRupiah),
+          selisihQty:cell(row,idx.selisihQty),
+          oh:cell(row,idx.oh)
+        };
+
+        if(!Object.values(out).some(v=>String(v).trim()!=='')) continue;
+        // Item normal harus memiliki setidaknya PLU/nama/rack atau nilai selisih.
+        if(out.plu||out.name||out.rack||out.selisihRupiah||out.selisihQty) rowsOut.push(out);
+      }
+
+      window.setSelisihSOData(rowsOut,summary);
+      const st=document.getElementById('selisihSOStatus');
+      if(st)st.textContent=`${rowsOut.length.toLocaleString('id-ID')} data ditampilkan • File aktif sampai ${new Date(file.expires_at).toLocaleString('id-ID')}`;
+    }catch(e){
+      console.error('Load Selisih SO:',e);
+      const st=document.getElementById('selisihSOStatus');
+      if(st)st.textContent='Gagal mengambil Selisih SO: '+(e?.message||e);
+      window.clearSelisihSOData();
+    }
+  }
+  window.loadSelisihSOFromServer=loadSelisihSOFromServer;
+
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
+  else init();
 })();
 </script>
 
@@ -5059,3 +5974,28 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
 })();
 </script>
+<style id="salesMemberVisibilityFixV12">
+/* V12: pastikan Sales Member tidak tertutup/diredupkan layer lain.
+   Hanya memperbaiki tampilan; logika dan data Sales Member tetap sama. */
+#hourlyDashboard{
+  position:relative !important;
+  z-index:10 !important;
+  opacity:1 !important;
+  filter:none !important;
+  visibility:visible !important;
+}
+#hourlyDashboard .mh-shell,
+#hourlyDashboard .mh-head,
+#hourlyDashboard .mh-brand,
+#hourlyDashboard .mh-date,
+#hourlyDashboard .mh-stats,
+#hourlyDashboard .mh-stat,
+#hourlyDashboard .mh-chart-card,
+#hourlyDashboard .mh-detail,
+#hourlyDashboard .mh-info{
+  opacity:1 !important;
+  filter:none !important;
+  visibility:visible !important;
+}
+</style>
+
