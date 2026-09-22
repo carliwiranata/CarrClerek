@@ -6,20 +6,22 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
-  build-apk:
-    name: Build Android APK
+  build-android:
+    name: Build CarrClerek APK
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: '22'
 
       - name: Create package.json
         run: |
@@ -31,6 +33,25 @@ jobs:
         run: |
           npm install @capacitor/core @capacitor/cli @capacitor/android
 
+      - name: Prepare Web Files
+        run: |
+          rm -rf www
+          mkdir -p www
+
+          cp index.html www/
+
+          if [ -d assets ]; then
+            cp -r assets www/
+          fi
+
+          if [ -d supabase ]; then
+            cp -r supabase www/
+          fi
+
+          if [ -f jszip.min.js ]; then
+            cp jszip.min.js www/
+          fi
+
       - name: Create Capacitor Configuration
         run: |
           cat > capacitor.config.ts <<'EOF'
@@ -39,7 +60,7 @@ jobs:
           const config: CapacitorConfig = {
             appId: 'com.carliwiranata.carrclerek',
             appName: 'CarrClerek',
-            webDir: '.',
+            webDir: 'www',
             server: {
               androidScheme: 'https'
             }
@@ -52,28 +73,28 @@ jobs:
         run: |
           npx cap add android
 
-      - name: Sync Web Application
+      - name: Sync Android
         run: |
           npx cap sync android
 
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: '17'
+          distribution: 'temurin'
+          java-version: '21'
 
-      - name: Build Debug APK
+      - name: Build APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --stacktrace
 
-      - name: Rename APK
+      - name: Prepare APK
         run: |
           mkdir -p apk
           cp android/app/build/outputs/apk/debug/app-debug.apk apk/CarrClerek.apk
 
-      - name: Upload CarrClerek APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: CarrClerek-APK
