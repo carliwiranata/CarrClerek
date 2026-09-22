@@ -12,8 +12,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       # ==========================================
-      # 1. CHECKOUT REPOSITORY
+      # 1. CHECKOUT
       # ==========================================
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -24,8 +25,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: 22
 
       # ==========================================
       # 3. CREATE PACKAGE.JSON
@@ -35,6 +35,9 @@ jobs:
           if [ ! -f package.json ]; then
             npm init -y
           fi
+
+          echo "package.json:"
+          cat package.json
 
       # ==========================================
       # 4. INSTALL TYPESCRIPT
@@ -74,11 +77,31 @@ jobs:
             --exclude='.github' \
             ./ www/
 
-          echo "Isi folder www:"
+          echo ""
+          echo "=========================================="
+          echo "ISI FOLDER WWW"
+          echo "=========================================="
+
           find www -maxdepth 2 -type f | sort
 
       # ==========================================
-      # 8. CREATE CAPACITOR CONFIG
+      # 8. CHECK INDEX.HTML
+      # ==========================================
+      - name: Check Web App
+        run: |
+          if [ ! -f www/index.html ]; then
+            echo "ERROR: www/index.html tidak ditemukan!"
+            echo ""
+            echo "File di repository:"
+            find . -maxdepth 2 -type f | sort
+            exit 1
+          fi
+
+          echo "index.html ditemukan."
+          ls -lh www/index.html
+
+      # ==========================================
+      # 9. CREATE CAPACITOR CONFIG
       # ==========================================
       - name: Create Capacitor Configuration
         run: |
@@ -95,71 +118,113 @@ jobs:
           export default config;
           EOF
 
-          echo "Capacitor config:"
+          echo ""
+          echo "=========================================="
+          echo "CAPACITOR CONFIG"
+          echo "=========================================="
+
           cat capacitor.config.ts
 
       # ==========================================
-      # 9. ADD ANDROID PLATFORM
+      # 10. ADD ANDROID PLATFORM
       # ==========================================
       - name: Add Android Platform
         run: |
-          if [ ! -d android ]; then
-            npx cap add android
-          else
-            echo "Folder android sudah ada, dilewati."
-          fi
+          npx cap add android
 
       # ==========================================
-      # 10. SYNC ANDROID
+      # 11. SYNC ANDROID
       # ==========================================
       - name: Sync Android
         run: |
           npx cap sync android
 
       # ==========================================
-      # 11. SETUP JAVA
+      # 12. SETUP JAVA
       # ==========================================
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
 
       # ==========================================
-      # 12. CHECK JAVA & GRADLE
+      # 13. CHECK BUILD ENVIRONMENT
       # ==========================================
       - name: Check Build Environment
         run: |
+          echo "=========================================="
+          echo "JAVA"
+          echo "=========================================="
+
           java -version
+
+          echo ""
+          echo "=========================================="
+          echo "NODE"
+          echo "=========================================="
+
+          node --version
+
+          echo ""
+          echo "=========================================="
+          echo "NPM"
+          echo "=========================================="
+
+          npm --version
+
+          echo ""
+          echo "=========================================="
+          echo "CAPACITOR"
+          echo "=========================================="
+
+          npx cap --version
+
+          echo ""
+          echo "=========================================="
+          echo "GRADLE"
+          echo "=========================================="
+
           cd android
           chmod +x gradlew
           ./gradlew --version
 
       # ==========================================
-      # 13. BUILD DEBUG APK
+      # 14. BUILD DEBUG APK
       # ==========================================
       - name: Build APK
         run: |
           cd android
+
           chmod +x gradlew
+
           ./gradlew assembleDebug --stacktrace
 
       # ==========================================
-      # 14. CHECK APK
+      # 15. CHECK APK
       # ==========================================
       - name: Prepare APK
         run: |
           mkdir -p output
 
+          if [ ! -f android/app/build/outputs/apk/debug/app-debug.apk ]; then
+            echo "ERROR: APK tidak ditemukan!"
+            find android/app/build/outputs -type f 2>/dev/null || true
+            exit 1
+          fi
+
           cp android/app/build/outputs/apk/debug/app-debug.apk \
              output/CarrClerek-debug.apk
 
-          echo "APK berhasil dibuat:"
+          echo ""
+          echo "=========================================="
+          echo "APK BERHASIL DIBUAT"
+          echo "=========================================="
+
           ls -lh output/CarrClerek-debug.apk
 
       # ==========================================
-      # 15. UPLOAD APK
+      # 16. UPLOAD APK
       # ==========================================
       - name: Upload APK
         uses: actions/upload-artifact@v4
