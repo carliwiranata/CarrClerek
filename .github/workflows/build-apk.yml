@@ -14,7 +14,7 @@ jobs:
     steps:
 
       # ==========================================
-      # 1. CHECKOUT
+      # 1. CHECKOUT REPOSITORY
       # ==========================================
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -40,14 +40,7 @@ jobs:
           cat package.json
 
       # ==========================================
-      # 4. INSTALL TYPESCRIPT
-      # ==========================================
-      - name: Install TypeScript
-        run: |
-          npm install --save-dev typescript
-
-      # ==========================================
-      # 5. INSTALL CAPACITOR
+      # 4. INSTALL CAPACITOR
       # ==========================================
       - name: Install Capacitor
         run: |
@@ -55,14 +48,14 @@ jobs:
           npm install --save-dev @capacitor/cli@7.4.4
 
       # ==========================================
-      # 6. INSTALL CAPACITOR ANDROID
+      # 5. INSTALL CAPACITOR ANDROID
       # ==========================================
       - name: Install Capacitor Android
         run: |
           npm install @capacitor/android@7.4.4
 
       # ==========================================
-      # 7. PREPARE WEB FILES
+      # 6. PREPARE WEB FILES
       # ==========================================
       - name: Prepare Web Files
         run: |
@@ -85,37 +78,42 @@ jobs:
           find www -maxdepth 2 -type f | sort
 
       # ==========================================
-      # 8. CHECK INDEX.HTML
+      # 7. CHECK INDEX.HTML
       # ==========================================
       - name: Check Web App
         run: |
           if [ ! -f www/index.html ]; then
             echo "ERROR: www/index.html tidak ditemukan!"
             echo ""
-            echo "File di repository:"
-            find . -maxdepth 2 -type f | sort
+            echo "File yang tersedia:"
+            find . -maxdepth 3 -type f | sort
             exit 1
           fi
 
-          echo "index.html ditemukan."
+          echo "index.html ditemukan:"
           ls -lh www/index.html
 
       # ==========================================
-      # 9. CREATE CAPACITOR CONFIG
+      # 8. REMOVE OLD CAPACITOR CONFIG
+      # ==========================================
+      - name: Remove Old Capacitor Config
+        run: |
+          rm -f capacitor.config.ts
+          rm -f capacitor.config.js
+          rm -f capacitor.config.mjs
+
+      # ==========================================
+      # 9. CREATE CAPACITOR JSON CONFIG
       # ==========================================
       - name: Create Capacitor Configuration
         run: |
-          cat > capacitor.config.ts <<'EOF'
-          import type { CapacitorConfig } from '@capacitor/cli';
-
-          const config: CapacitorConfig = {
-            appId: 'com.carrclerek.app',
-            appName: 'CarrClerek',
-            webDir: 'www',
-            bundledWebRuntime: false
-          };
-
-          export default config;
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.carrclerek.app",
+            "appName": "CarrClerek",
+            "webDir": "www",
+            "bundledWebRuntime": false
+          }
           EOF
 
           echo ""
@@ -123,7 +121,7 @@ jobs:
           echo "CAPACITOR CONFIG"
           echo "=========================================="
 
-          cat capacitor.config.ts
+          cat capacitor.config.json
 
       # ==========================================
       # 10. ADD ANDROID PLATFORM
@@ -156,35 +154,30 @@ jobs:
           echo "=========================================="
           echo "JAVA"
           echo "=========================================="
-
           java -version
 
           echo ""
           echo "=========================================="
           echo "NODE"
           echo "=========================================="
-
           node --version
 
           echo ""
           echo "=========================================="
           echo "NPM"
           echo "=========================================="
-
           npm --version
 
           echo ""
           echo "=========================================="
           echo "CAPACITOR"
           echo "=========================================="
-
           npx cap --version
 
           echo ""
           echo "=========================================="
           echo "GRADLE"
           echo "=========================================="
-
           cd android
           chmod +x gradlew
           ./gradlew --version
@@ -195,13 +188,12 @@ jobs:
       - name: Build APK
         run: |
           cd android
-
           chmod +x gradlew
 
           ./gradlew assembleDebug --stacktrace
 
       # ==========================================
-      # 15. CHECK APK
+      # 15. PREPARE APK
       # ==========================================
       - name: Prepare APK
         run: |
@@ -209,7 +201,11 @@ jobs:
 
           if [ ! -f android/app/build/outputs/apk/debug/app-debug.apk ]; then
             echo "ERROR: APK tidak ditemukan!"
+
+            echo ""
+            echo "File hasil build:"
             find android/app/build/outputs -type f 2>/dev/null || true
+
             exit 1
           fi
 
