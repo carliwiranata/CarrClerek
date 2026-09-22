@@ -12,63 +12,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. CHECKOUT
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 2. NODE.JS
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      # 3. JAVA 21
-      - name: Setup Java
+      - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
 
-      # 4. CHECK ENVIRONMENT
       - name: Check Environment
         run: |
           java -version
           node --version
           npm --version
 
-      # 5. CHECK APP ICON
-      - name: Check App Icon
-        run: |
-          if [ ! -f assets/app-icon.png ]; then
-            echo "ERROR: assets/app-icon.png tidak ditemukan."
-            echo "Upload file app-icon.png ke folder assets di repository."
-            exit 1
-          fi
-          file assets/app-icon.png
-          identify assets/app-icon.png || true
-
-      # 6. INSTALL IMAGE MAGICK
-      - name: Install ImageMagick
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y imagemagick
-
-      # 7. CREATE PACKAGE.JSON
       - name: Create package.json
         run: |
           if [ ! -f package.json ]; then
             npm init -y
           fi
-          cat package.json
 
-      # 8. INSTALL CAPACITOR
       - name: Install Capacitor
         run: |
           npm install @capacitor/core@7.4.4
           npm install --save-dev @capacitor/cli@7.4.4
           npm install @capacitor/android@7.4.4
 
-      # 9. PREPARE WEB FILES
       - name: Prepare Web Files
         run: |
           rm -rf www
@@ -82,14 +57,8 @@ jobs:
             --exclude='.github' \
             ./ www/
 
-          if [ ! -f www/index.html ]; then
-            echo "ERROR: www/index.html tidak ditemukan!"
-            exit 1
-          fi
+          test -f www/index.html
 
-          ls -lh www/index.html
-
-      # 10. CAPACITOR CONFIG
       - name: Create Capacitor Configuration
         run: |
           rm -f capacitor.config.ts capacitor.config.js capacitor.config.mjs
@@ -103,105 +72,100 @@ jobs:
           }
           EOF
 
-      # 11. ADD ANDROID
       - name: Add Android Platform
         run: |
           rm -rf android
           npx cap add android
 
-      # 12. ADD LOCATION PERMISSIONS
+      # ==========================================================
+      # LOCATION PERMISSION
+      # ==========================================================
       - name: Add Android Location Permission
         run: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-
           python3 - <<'PY'
           from pathlib import Path
 
-          p = Path("android/app/src/main/AndroidManifest.xml")
-          s = p.read_text(encoding="utf-8")
+          path = Path("android/app/src/main/AndroidManifest.xml")
+          content = path.read_text(encoding="utf-8")
 
           permissions = [
               '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />',
-              '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />',
+              '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />'
           ]
 
-          for perm in permissions:
-              if perm.split('"')[1] not in s:
-                  s = s.replace("</manifest>", perm + "\n</manifest>")
+          for p in permissions:
+              if p not in content:
+                  content = content.replace("</manifest>", p + "\n</manifest>")
 
-          p.write_text(s, encoding="utf-8")
+          path.write_text(content, encoding="utf-8")
           PY
 
-          grep -n "ACCESS_.*LOCATION" "$MANIFEST"
+      # ==========================================================
+      # APP ICON - AYAM PANGGANG LAVA
+      # ==========================================================
+      - name: Install ImageMagick
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
 
-      # 13. APPLY NEW APP ICON
-      - name: Apply Ayam Panggang LAVA App Icon
+      - name: Install Lava App Icon
         run: |
           set -e
 
-          RES="android/app/src/main/res"
           SRC="assets/app-icon.png"
+          RES="android/app/src/main/res"
 
-          mkdir -p "$RES/drawable"
-          mkdir -p "$RES/mipmap-anydpi-v26"
+          test -f "$SRC"
 
           for D in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
             mkdir -p "$RES/mipmap-$D"
           done
 
-          # Legacy icons: full square logo, already padded so artwork is not cut.
-          convert "$SRC" -resize 48x48 -background none -gravity center -extent 48x48 "$RES/mipmap-mdpi/ic_launcher.png"
-          convert "$SRC" -resize 48x48 -background none -gravity center -extent 48x48 "$RES/mipmap-mdpi/ic_launcher_round.png"
+          # Use a unique resource name so Android/launcher cache
+          # cannot keep using the old ic_launcher resource.
+          convert "$SRC" -resize 48x48   "$RES/mipmap-mdpi/ic_launcher_lava.png"
+          convert "$SRC" -resize 72x72   "$RES/mipmap-hdpi/ic_launcher_lava.png"
+          convert "$SRC" -resize 96x96   "$RES/mipmap-xhdpi/ic_launcher_lava.png"
+          convert "$SRC" -resize 144x144 "$RES/mipmap-xxhdpi/ic_launcher_lava.png"
+          convert "$SRC" -resize 192x192 "$RES/mipmap-xxxhdpi/ic_launcher_lava.png"
 
-          convert "$SRC" -resize 72x72 -background none -gravity center -extent 72x72 "$RES/mipmap-hdpi/ic_launcher.png"
-          convert "$SRC" -resize 72x72 -background none -gravity center -extent 72x72 "$RES/mipmap-hdpi/ic_launcher_round.png"
+          # Round icon uses the same artwork.
+          convert "$SRC" -resize 48x48   "$RES/mipmap-mdpi/ic_launcher_lava_round.png"
+          convert "$SRC" -resize 72x72   "$RES/mipmap-hdpi/ic_launcher_lava_round.png"
+          convert "$SRC" -resize 96x96   "$RES/mipmap-xhdpi/ic_launcher_lava_round.png"
+          convert "$SRC" -resize 144x144 "$RES/mipmap-xxhdpi/ic_launcher_lava_round.png"
+          convert "$SRC" -resize 192x192 "$RES/mipmap-xxxhdpi/ic_launcher_lava_round.png"
 
-          convert "$SRC" -resize 96x96 -background none -gravity center -extent 96x96 "$RES/mipmap-xhdpi/ic_launcher.png"
-          convert "$SRC" -resize 96x96 -background none -gravity center -extent 96x96 "$RES/mipmap-xhdpi/ic_launcher_round.png"
+          # Explicitly point AndroidManifest to the NEW icon name.
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("android/app/src/main/AndroidManifest.xml")
+          content = path.read_text(encoding="utf-8")
 
-          convert "$SRC" -resize 144x144 -background none -gravity center -extent 144x144 "$RES/mipmap-xxhdpi/ic_launcher.png"
-          convert "$SRC" -resize 144x144 -background none -gravity center -extent 144x144 "$RES/mipmap-xxhdpi/ic_launcher_round.png"
+          content = content.replace(
+              'android:icon="@mipmap/ic_launcher"',
+              'android:icon="@mipmap/ic_launcher_lava"'
+          )
+          content = content.replace(
+              'android:roundIcon="@mipmap/ic_launcher_round"',
+              'android:roundIcon="@mipmap/ic_launcher_lava_round"'
+          )
 
-          convert "$SRC" -resize 192x192 -background none -gravity center -extent 192x192 "$RES/mipmap-xxxhdpi/ic_launcher.png"
-          convert "$SRC" -resize 192x192 -background none -gravity center -extent 192x192 "$RES/mipmap-xxxhdpi/ic_launcher_round.png"
+          path.write_text(content, encoding="utf-8")
+          PY
 
-          # Adaptive foreground: keep artwork inside Android's safer central area.
-          convert "$SRC" -resize 70%x70% -background none -gravity center -extent 432x432 "$RES/drawable/ic_launcher_foreground.png"
+          echo "=== ICON RESOURCES ==="
+          find "$RES" -name 'ic_launcher_lava*' -type f | sort
 
-          # Adaptive background.
-          cat > "$RES/drawable/ic_launcher_background.xml" <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <shape xmlns:android="http://schemas.android.com/apk/res/android"
-              android:shape="rectangle">
-              <solid android:color="#000000" />
-          </shape>
-          EOF
+          echo "=== MANIFEST ICON ==="
+          grep -n 'android:icon\|android:roundIcon' \
+            android/app/src/main/AndroidManifest.xml
 
-          # Android 8+ adaptive icon.
-          cat > "$RES/mipmap-anydpi-v26/ic_launcher.xml" <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-              <background android:drawable="@drawable/ic_launcher_background" />
-              <foreground android:drawable="@drawable/ic_launcher_foreground" />
-          </adaptive-icon>
-          EOF
-
-          cat > "$RES/mipmap-anydpi-v26/ic_launcher_round.xml" <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-              <background android:drawable="@drawable/ic_launcher_background" />
-              <foreground android:drawable="@drawable/ic_launcher_foreground" />
-          </adaptive-icon>
-          EOF
-
-          echo "Launcher icon resources:"
-          find "$RES" -type f \( -name 'ic_launcher*' \) | sort
-
-      # 14. APPLY ANTI-SCREENSHOT
+      # ==========================================================
+      # ANTI SCREENSHOT / SCREEN RECORDING
+      # ==========================================================
       - name: Enable Anti Screenshot
         run: |
-          set -e
-
           MAIN="android/app/src/main/java/com/carrclerek/app/MainActivity.java"
 
           mkdir -p "$(dirname "$MAIN")"
@@ -220,8 +184,6 @@ jobs:
               public void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
 
-                  // Blokir screenshot, screen recording, dan preview
-                  // aplikasi pada Recent Apps.
                   getWindow().setFlags(
                       WindowManager.LayoutParams.FLAG_SECURE,
                       WindowManager.LayoutParams.FLAG_SECURE
@@ -230,57 +192,44 @@ jobs:
           }
           EOF
 
-          echo "FLAG_SECURE berhasil dipasang:"
-          cat "$MAIN"
+          grep -n "FLAG_SECURE" "$MAIN"
 
-      # 15. SYNC CAPACITOR
       - name: Sync Android
         run: |
           npx cap sync android
 
-      # 16. VERIFY NATIVE SETTINGS
       - name: Verify Android Settings
         run: |
-          echo "===== LOCATION PERMISSIONS ====="
-          grep -n "ACCESS_.*LOCATION" android/app/src/main/AndroidManifest.xml
+          echo "=== LOCATION ==="
+          grep -n "ACCESS_.*LOCATION" \
+            android/app/src/main/AndroidManifest.xml
 
-          echo ""
-          echo "===== MAIN ACTIVITY ====="
-          grep -n "FLAG_SECURE" android/app/src/main/java/com/carrclerek/app/MainActivity.java
+          echo "=== ICON ==="
+          grep -n 'android:icon\|android:roundIcon' \
+            android/app/src/main/AndroidManifest.xml
 
-          echo ""
-          echo "===== APP ICON ====="
-          identify android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          echo "=== ANTI SCREENSHOT ==="
+          grep -n "FLAG_SECURE" \
+            android/app/src/main/java/com/carrclerek/app/MainActivity.java
 
-      # 17. CHECK CAPACITOR
-      - name: Check Capacitor
-        run: npx cap --version
-
-      # 18. BUILD APK
       - name: Build APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
-      # 19. PREPARE APK
       - name: Prepare APK
         run: |
           mkdir -p output
 
           APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          test -f "$APK"
 
-          if [ ! -f "$APK" ]; then
-            echo "ERROR: APK tidak ditemukan!"
-            find android/app/build/outputs -type f 2>/dev/null || true
-            exit 1
-          fi
-
-          cp "$APK" output/CarrClerek-AyamPanggangLAVA-debug.apk
+          cp "$APK" \
+            output/CarrClerek-AyamPanggangLAVA-debug.apk
 
           ls -lh output/CarrClerek-AyamPanggangLAVA-debug.apk
 
-      # 20. UPLOAD APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
