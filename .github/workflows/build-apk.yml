@@ -28,7 +28,27 @@ jobs:
           node-version: 22
 
       # ==========================================
-      # 3. CREATE PACKAGE.JSON
+      # 3. SETUP JAVA 21
+      # ==========================================
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # ==========================================
+      # 4. CHECK JAVA
+      # ==========================================
+      - name: Check Java
+        run: |
+          echo "=========================================="
+          echo "JAVA VERSION"
+          echo "=========================================="
+
+          java -version
+
+      # ==========================================
+      # 5. CREATE PACKAGE.JSON
       # ==========================================
       - name: Create package.json
         run: |
@@ -40,7 +60,7 @@ jobs:
           cat package.json
 
       # ==========================================
-      # 4. INSTALL CAPACITOR
+      # 6. INSTALL CAPACITOR
       # ==========================================
       - name: Install Capacitor
         run: |
@@ -48,14 +68,14 @@ jobs:
           npm install --save-dev @capacitor/cli@7.4.4
 
       # ==========================================
-      # 5. INSTALL CAPACITOR ANDROID
+      # 7. INSTALL CAPACITOR ANDROID
       # ==========================================
       - name: Install Capacitor Android
         run: |
           npm install @capacitor/android@7.4.4
 
       # ==========================================
-      # 6. PREPARE WEB FILES
+      # 8. PREPARE WEB FILES
       # ==========================================
       - name: Prepare Web Files
         run: |
@@ -78,7 +98,7 @@ jobs:
           find www -maxdepth 2 -type f | sort
 
       # ==========================================
-      # 7. CHECK INDEX.HTML
+      # 9. CHECK INDEX.HTML
       # ==========================================
       - name: Check Web App
         run: |
@@ -94,7 +114,7 @@ jobs:
           ls -lh www/index.html
 
       # ==========================================
-      # 8. REMOVE OLD CAPACITOR CONFIG
+      # 10. REMOVE OLD CAPACITOR CONFIG
       # ==========================================
       - name: Remove Old Capacitor Config
         run: |
@@ -103,7 +123,7 @@ jobs:
           rm -f capacitor.config.mjs
 
       # ==========================================
-      # 9. CREATE CAPACITOR JSON CONFIG
+      # 11. CREATE CAPACITOR CONFIGURATION
       # ==========================================
       - name: Create Capacitor Configuration
         run: |
@@ -124,76 +144,73 @@ jobs:
           cat capacitor.config.json
 
       # ==========================================
-      # 10. ADD ANDROID PLATFORM
+      # 12. ADD ANDROID PLATFORM
       # ==========================================
       - name: Add Android Platform
         run: |
           npx cap add android
 
       # ==========================================
-      # 11. SYNC ANDROID
+      # 13. SYNC ANDROID
       # ==========================================
       - name: Sync Android
         run: |
           npx cap sync android
 
       # ==========================================
-      # 12. SETUP JAVA
-      # ==========================================
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      # ==========================================
-      # 13. CHECK BUILD ENVIRONMENT
+      # 14. CHECK BUILD ENVIRONMENT
       # ==========================================
       - name: Check Build Environment
         run: |
           echo "=========================================="
           echo "JAVA"
           echo "=========================================="
+
           java -version
 
           echo ""
           echo "=========================================="
           echo "NODE"
           echo "=========================================="
+
           node --version
 
           echo ""
           echo "=========================================="
           echo "NPM"
           echo "=========================================="
+
           npm --version
 
           echo ""
           echo "=========================================="
           echo "CAPACITOR"
           echo "=========================================="
+
           npx cap --version
 
           echo ""
           echo "=========================================="
           echo "GRADLE"
           echo "=========================================="
+
           cd android
           chmod +x gradlew
           ./gradlew --version
 
       # ==========================================
-      # 14. BUILD DEBUG APK
+      # 15. BUILD DEBUG APK
       # ==========================================
       - name: Build APK
         run: |
           cd android
+
           chmod +x gradlew
 
           ./gradlew assembleDebug --stacktrace
 
       # ==========================================
-      # 15. PREPARE APK
+      # 16. PREPARE APK
       # ==========================================
       - name: Prepare APK
         run: |
@@ -220,7 +237,7 @@ jobs:
           ls -lh output/CarrClerek-debug.apk
 
       # ==========================================
-      # 16. UPLOAD APK
+      # 17. UPLOAD APK
       # ==========================================
       - name: Upload APK
         uses: actions/upload-artifact@v4
