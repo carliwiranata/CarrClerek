@@ -14,13 +14,13 @@ jobs:
     steps:
 
       # ==========================================
-      # 1. CHECKOUT REPOSITORY
+      # 1. CHECKOUT
       # ==========================================
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       # ==========================================
-      # 2. SETUP NODE.JS
+      # 2. NODE.JS
       # ==========================================
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -28,7 +28,7 @@ jobs:
           node-version: 22
 
       # ==========================================
-      # 3. SETUP JAVA 21
+      # 3. JAVA 21
       # ==========================================
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -41,11 +41,9 @@ jobs:
       # ==========================================
       - name: Check Java
         run: |
-          echo "=========================================="
-          echo "JAVA VERSION"
-          echo "=========================================="
-
           java -version
+          node --version
+          npm --version
 
       # ==========================================
       # 5. CREATE PACKAGE.JSON
@@ -56,7 +54,6 @@ jobs:
             npm init -y
           fi
 
-          echo "package.json:"
           cat package.json
 
       # ==========================================
@@ -90,9 +87,8 @@ jobs:
             --exclude='.github' \
             ./ www/
 
-          echo ""
           echo "=========================================="
-          echo "ISI FOLDER WWW"
+          echo "WEB FILES"
           echo "=========================================="
 
           find www -maxdepth 2 -type f | sort
@@ -104,17 +100,14 @@ jobs:
         run: |
           if [ ! -f www/index.html ]; then
             echo "ERROR: www/index.html tidak ditemukan!"
-            echo ""
-            echo "File yang tersedia:"
-            find . -maxdepth 3 -type f | sort
             exit 1
           fi
 
-          echo "index.html ditemukan:"
+          echo "index.html ditemukan."
           ls -lh www/index.html
 
       # ==========================================
-      # 10. REMOVE OLD CAPACITOR CONFIG
+      # 10. REMOVE OLD CONFIG
       # ==========================================
       - name: Remove Old Capacitor Config
         run: |
@@ -123,7 +116,7 @@ jobs:
           rm -f capacitor.config.mjs
 
       # ==========================================
-      # 11. CREATE CAPACITOR CONFIGURATION
+      # 11. CAPACITOR CONFIG
       # ==========================================
       - name: Create Capacitor Configuration
         run: |
@@ -136,70 +129,82 @@ jobs:
           }
           EOF
 
-          echo ""
-          echo "=========================================="
-          echo "CAPACITOR CONFIG"
-          echo "=========================================="
-
           cat capacitor.config.json
 
       # ==========================================
-      # 12. ADD ANDROID PLATFORM
+      # 12. ADD ANDROID
       # ==========================================
       - name: Add Android Platform
         run: |
           npx cap add android
 
       # ==========================================
-      # 13. SYNC ANDROID
+      # 13. ADD LOCATION PERMISSION
+      # ==========================================
+      - name: Add Android Location Permission
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+
+          echo "=========================================="
+          echo "MENAMBAHKAN PERMISSION LOKASI"
+          echo "=========================================="
+
+          if ! grep -q 'android.permission.ACCESS_COARSE_LOCATION' "$MANIFEST"; then
+            sed -i '/<manifest[^>]*>/a\
+              <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />' "$MANIFEST"
+          fi
+
+          if ! grep -q 'android.permission.ACCESS_FINE_LOCATION' "$MANIFEST"; then
+            sed -i '/<manifest[^>]*>/a\
+              <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />' "$MANIFEST"
+          fi
+
+          echo ""
+          echo "Isi AndroidManifest.xml:"
+          cat "$MANIFEST"
+
+      # ==========================================
+      # 14. SYNC ANDROID
       # ==========================================
       - name: Sync Android
         run: |
           npx cap sync android
 
       # ==========================================
-      # 14. CHECK BUILD ENVIRONMENT
+      # 15. VERIFY LOCATION PERMISSION
       # ==========================================
-      - name: Check Build Environment
+      - name: Verify Location Permission
         run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+
           echo "=========================================="
-          echo "JAVA"
+          echo "CEK PERMISSION LOKASI"
           echo "=========================================="
 
-          java -version
-
-          echo ""
-          echo "=========================================="
-          echo "NODE"
-          echo "=========================================="
-
-          node --version
+          grep -n "ACCESS_COARSE_LOCATION" "$MANIFEST"
+          grep -n "ACCESS_FINE_LOCATION" "$MANIFEST"
 
           echo ""
-          echo "=========================================="
-          echo "NPM"
-          echo "=========================================="
+          echo "Permission lokasi berhasil dipasang."
 
-          npm --version
-
-          echo ""
-          echo "=========================================="
-          echo "CAPACITOR"
-          echo "=========================================="
-
+      # ==========================================
+      # 16. CHECK CAPACITOR
+      # ==========================================
+      - name: Check Capacitor
+        run: |
           npx cap --version
 
-          echo ""
-          echo "=========================================="
-          echo "GRADLE"
-          echo "=========================================="
-
+      # ==========================================
+      # 17. CHECK GRADLE
+      # ==========================================
+      - name: Check Gradle
+        run: |
           cd android
           chmod +x gradlew
           ./gradlew --version
 
       # ==========================================
-      # 15. BUILD DEBUG APK
+      # 18. BUILD APK
       # ==========================================
       - name: Build APK
         run: |
@@ -210,7 +215,7 @@ jobs:
           ./gradlew assembleDebug --stacktrace
 
       # ==========================================
-      # 16. PREPARE APK
+      # 19. PREPARE APK
       # ==========================================
       - name: Prepare APK
         run: |
@@ -218,18 +223,13 @@ jobs:
 
           if [ ! -f android/app/build/outputs/apk/debug/app-debug.apk ]; then
             echo "ERROR: APK tidak ditemukan!"
-
-            echo ""
-            echo "File hasil build:"
             find android/app/build/outputs -type f 2>/dev/null || true
-
             exit 1
           fi
 
           cp android/app/build/outputs/apk/debug/app-debug.apk \
-             output/CarrClerek-debug.apk
+            output/CarrClerek-debug.apk
 
-          echo ""
           echo "=========================================="
           echo "APK BERHASIL DIBUAT"
           echo "=========================================="
@@ -237,12 +237,12 @@ jobs:
           ls -lh output/CarrClerek-debug.apk
 
       # ==========================================
-      # 17. UPLOAD APK
+      # 20. UPLOAD APK
       # ==========================================
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: CarrClerek-APK
+          name: CarrClerek-APK-Lokasi
           path: output/CarrClerek-debug.apk
           if-no-files-found: error
           retention-days: 30
