@@ -175,15 +175,13 @@ jobs:
 
           import android.os.Bundle;
           import android.view.WindowManager;
-
           import com.getcapacitor.BridgeActivity;
 
           public class MainActivity extends BridgeActivity {
-
               @Override
               public void onCreate(Bundle savedInstanceState) {
+                  registerPlugin(StrukTrakerPlugin.class);
                   super.onCreate(savedInstanceState);
-
                   getWindow().setFlags(
                       WindowManager.LayoutParams.FLAG_SECURE,
                       WindowManager.LayoutParams.FLAG_SECURE
@@ -193,6 +191,301 @@ jobs:
           EOF
 
           grep -n "FLAG_SECURE" "$MAIN"
+
+      # ==========================================================
+      # STRUKTRAKER - PRIVATE IN-APP WEBVIEW
+      # ==========================================================
+      - name: Install StrukTraker WebView
+        run: |
+          set -e
+          SRC="android/app/src/main/java/com/carrclerek/app"
+          mkdir -p "$SRC"
+
+          cat > "$SRC/StrukTrakerPlugin.java" <<'EOF'
+          package com.carrclerek.app;
+
+          import android.content.Intent;
+          import com.getcapacitor.Plugin;
+          import com.getcapacitor.PluginCall;
+          import com.getcapacitor.PluginMethod;
+          import com.getcapacitor.annotation.CapacitorPlugin;
+
+          @CapacitorPlugin(name = "StrukTraker")
+          public class StrukTrakerPlugin extends Plugin {
+              @PluginMethod
+              public void open(PluginCall call) {
+                  getActivity().runOnUiThread(() -> {
+                      getActivity().startActivity(
+                          new Intent(getActivity(), StrukTrakerActivity.class)
+                      );
+                      call.resolve();
+                  });
+              }
+          }
+          EOF
+
+          cat > "$SRC/StrukTrakerActivity.java" <<'EOF'
+          package com.carrclerek.app;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.content.Intent;
+          import android.net.Uri;
+          import android.graphics.Color;
+          import android.view.Gravity;
+          import android.view.View;
+          import android.view.WindowManager;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebResourceRequest;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import android.widget.Button;
+          import android.widget.LinearLayout;
+          import android.widget.ProgressBar;
+          import android.widget.TextView;
+          import android.widget.Toast;
+          import android.webkit.ValueCallback;
+
+          public class StrukTrakerActivity extends Activity {
+              private static final String START_URL = "https://struktraker.lovable.app/";
+              private static final String ALLOWED_HOST = "struktraker.lovable.app";
+              private static final int FILE_CHOOSER_REQUEST = 7412;
+              private WebView webView;
+              private ProgressBar progress;
+              private ValueCallback<Uri[]> filePathCallback;
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE,
+                                       WindowManager.LayoutParams.FLAG_SECURE);
+
+                  LinearLayout root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+                  root.setBackgroundColor(Color.rgb(18, 18, 20));
+
+                  LinearLayout bar = new LinearLayout(this);
+                  bar.setGravity(Gravity.CENTER_VERTICAL);
+                  bar.setPadding(14, 8, 14, 8);
+                  bar.setBackgroundColor(Color.rgb(25, 25, 28));
+
+                  Button back = new Button(this);
+                  back.setText("‹");
+                  back.setTextSize(25);
+                  back.setTextColor(Color.WHITE);
+                  back.setBackgroundColor(Color.TRANSPARENT);
+                  back.setOnClickListener(v -> finish());
+
+                  TextView title = new TextView(this);
+                  title.setText("StrukTraker");
+                  title.setTextColor(Color.WHITE);
+                  title.setTextSize(18);
+                  title.setGravity(Gravity.CENTER_VERTICAL);
+                  title.setPadding(12, 0, 0, 0);
+                  title.setTypeface(null, android.graphics.Typeface.BOLD);
+
+                  bar.addView(back, new LinearLayout.LayoutParams(52, 52));
+                  bar.addView(title, new LinearLayout.LayoutParams(0, 52, 1));
+                  root.addView(bar);
+
+                  progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+                  progress.setMax(100);
+                  root.addView(progress, new LinearLayout.LayoutParams(
+                      LinearLayout.LayoutParams.MATCH_PARENT, 3));
+
+                  webView = new WebView(this);
+                  WebSettings settings = webView.getSettings();
+                  settings.setJavaScriptEnabled(true);
+                  settings.setDomStorageEnabled(true);
+                  settings.setDatabaseEnabled(true);
+                  settings.setAllowFileAccess(false);
+                  settings.setAllowContentAccess(true);
+                  settings.setJavaScriptCanOpenWindowsAutomatically(false);
+                  settings.setSupportMultipleWindows(false);
+                  settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+                  android.webkit.CookieManager cookies = android.webkit.CookieManager.getInstance();
+                  cookies.setAcceptCookie(true);
+                  cookies.setAcceptThirdPartyCookies(webView, true);
+
+                  webView.setWebViewClient(new WebViewClient() {
+                      @Override
+                      public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                          Uri uri = request.getUrl();
+                          String host = uri.getHost();
+                          if ("https".equalsIgnoreCase(uri.getScheme()) &&
+                              host != null && (ALLOWED_HOST.equalsIgnoreCase(host) ||
+                              host.toLowerCase().endsWith("." + ALLOWED_HOST))) {
+                              return false;
+                          }
+                          Toast.makeText(StrukTrakerActivity.this,
+                              "Tautan di luar StrukTraker dibatasi.", Toast.LENGTH_SHORT).show();
+                          return true;
+                      }
+
+                      @Override
+                      public void onReceivedError(WebView view,
+                          android.webkit.WebResourceRequest request,
+                          android.webkit.WebResourceError error) {
+                          if (request.isForMainFrame()) {
+                              Toast.makeText(StrukTrakerActivity.this,
+                                  "StrukTraker gagal dimuat. Periksa koneksi internet.",
+                                  Toast.LENGTH_LONG).show();
+                          }
+                      }
+                  });
+
+                  webView.setWebChromeClient(new WebChromeClient() {
+                      @Override
+                      public void onProgressChanged(WebView view, int value) {
+                          progress.setProgress(value);
+                          progress.setVisibility(value >= 100 ? View.GONE : View.VISIBLE);
+                      }
+
+                      @Override
+                      public boolean onShowFileChooser(WebView view,
+                          ValueCallback<Uri[]> callback, FileChooserParams params) {
+                          if (filePathCallback != null) filePathCallback.onReceiveValue(null);
+                          filePathCallback = callback;
+                          Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                          intent.addCategory(Intent.CATEGORY_OPENABLE);
+                          intent.setType("*/*");
+                          intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
+                              "application/zip", "application/x-zip-compressed",
+                              "application/octet-stream", "application/vnd.sqlite3",
+                              "application/x-sqlite3", "application/pdf", "image/*"
+                          });
+                          try {
+                              startActivityForResult(Intent.createChooser(intent,
+                                  "Pilih file database / ZIP"), FILE_CHOOSER_REQUEST);
+                          } catch (Exception e) {
+                              filePathCallback = null;
+                              callback.onReceiveValue(null);
+                              Toast.makeText(StrukTrakerActivity.this,
+                                  "Pemilih file tidak dapat dibuka.", Toast.LENGTH_SHORT).show();
+                          }
+                          return true;
+                      }
+                  });
+
+                  root.addView(webView, new LinearLayout.LayoutParams(
+                      LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
+                  setContentView(root);
+                  webView.loadUrl(START_URL);
+              }
+
+              @Override
+              protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+                  super.onActivityResult(requestCode, resultCode, data);
+                  if (requestCode == FILE_CHOOSER_REQUEST && filePathCallback != null) {
+                      Uri[] result = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
+                      filePathCallback.onReceiveValue(result);
+                      filePathCallback = null;
+                  }
+              }
+
+              @Override
+              public void onBackPressed() {
+                  if (webView != null && webView.canGoBack()) webView.goBack();
+                  else finish();
+              }
+
+              @Override
+              protected void onDestroy() {
+                  if (filePathCallback != null) {
+                      filePathCallback.onReceiveValue(null);
+                      filePathCallback = null;
+                  }
+                  if (webView != null) {
+                      webView.stopLoading();
+                      webView.destroy();
+                  }
+                  super.onDestroy();
+              }
+          }
+          EOF
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text(encoding="utf-8")
+          activity = '        <activity android:name=".StrukTrakerActivity" android:exported="false" android:configChanges="keyboard|keyboardHidden|orientation|screenSize" />'
+          if "StrukTrakerActivity" not in s:
+              s = s.replace("</application>", activity + "\n    </application>")
+          p.write_text(s, encoding="utf-8")
+
+          # Menu only exists in the native Android build and only while the
+          # existing CarrClerek user shell is visible after successful login.
+          index = Path("www/index.html")
+          html = index.read_text(encoding="utf-8")
+          marker = "/* CARRCLEREK_STRUKTRAKER_NATIVE_ENTRY */"
+          if marker not in html:
+              script = r"""
+          <script>
+          /* CARRCLEREK_STRUKTRAKER_NATIVE_ENTRY */
+          (function(){
+            'use strict';
+            function initStrukTrakerEntry(){
+              var cap = window.Capacitor;
+              if(!cap || typeof cap.isNativePlatform !== 'function' || !cap.isNativePlatform()) return;
+              var plugin = cap.Plugins && cap.Plugins.StrukTraker;
+              if(!plugin || typeof plugin.open !== 'function') return;
+
+              var card = null;
+              function refresh(){
+                var shell = document.getElementById('appShell');
+                var admin = document.getElementById('adminPage');
+                var login = document.getElementById('loginPage');
+                var userVisible = !!(shell && getComputedStyle(shell).display !== 'none' &&
+                  shell.getClientRects().length && (!admin || !admin.classList.contains('show')) &&
+                  (!login || !login.classList.contains('show')));
+                if(!userVisible){
+                  if(card){card.remove();card=null;}
+                  return;
+                }
+                if(card && card.isConnected) return;
+                card = document.createElement('section');
+                card.className = 'card';
+                card.id = 'strukTrakerNativeCard';
+                card.innerHTML = '<div style="font-size:21px;font-weight:900;margin-bottom:7px">🧾 StrukTraker</div>' +
+                  '<div class="muted" style="margin-bottom:14px">Buka fitur rekap struk langsung di aplikasi CarrClerek.</div>' +
+                  '<button type="button" class="btn" id="strukTrakerNativeOpen">BUKA STRUKTRAKER</button>';
+                var anchor = document.getElementById('authUserBar');
+                if(anchor && anchor.parentNode) anchor.parentNode.insertBefore(card, anchor.nextSibling);
+                else shell.insertBefore(card, shell.firstChild);
+                card.querySelector('#strukTrakerNativeOpen').addEventListener('click', function(){
+                  var button = this;
+                  button.disabled = true;
+                  button.textContent = 'MEMBUKA...';
+                  Promise.resolve(plugin.open()).catch(function(){
+                    alert('StrukTraker belum dapat dibuka. Tutup aplikasi lalu coba lagi.');
+                  }).finally(function(){
+                    button.disabled = false;
+                    button.textContent = 'BUKA STRUKTRAKER';
+                  });
+                });
+              }
+              refresh();
+              new MutationObserver(refresh).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
+              window.setInterval(refresh,1500);
+            }
+            if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded',initStrukTrakerEntry);
+            else initStrukTrakerEntry();
+          })();
+          </script>
+          """
+              pos = html.lower().rfind("</body>")
+              if pos >= 0:
+                  html = html[:pos] + script + "\n" + html[pos:]
+              else:
+                  html += script
+              index.write_text(html, encoding="utf-8")
+          PY
+
+          echo "=== STRUKTRAKER NATIVE FILES ==="
+          ls -l "$SRC/StrukTrakerPlugin.java" "$SRC/StrukTrakerActivity.java"
+          grep -n "StrukTrakerActivity" android/app/src/main/AndroidManifest.xml
+          grep -n "CARRCLEREK_STRUKTRAKER_NATIVE_ENTRY" www/index.html
 
       - name: Sync Android
         run: |
