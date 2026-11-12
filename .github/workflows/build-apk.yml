@@ -439,7 +439,6 @@ jobs:
                       LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
                   setContentView(root);
                   String storeCode = getIntent().getStringExtra("stock_store_code");
-                  String jadwalSOStoreCode = getIntent().getStringExtra("jadwal_so_store_code");
                   if (storeCode != null && !storeCode.trim().isEmpty()) {
                       webView.loadUrl(STOCK_ST_SHIFT_URL + Uri.encode(storeCode.trim()));
                   } else if (jadwalSOStoreCode != null && !jadwalSOStoreCode.trim().isEmpty()) {
