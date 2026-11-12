@@ -205,6 +205,9 @@ jobs:
           package com.carrclerek.app;
 
           import android.content.Intent;
+          import android.app.AlertDialog;
+          import android.text.InputType;
+          import android.widget.EditText;
           import com.getcapacitor.Plugin;
           import com.getcapacitor.PluginCall;
           import com.getcapacitor.PluginMethod;
@@ -212,14 +215,47 @@ jobs:
 
           @CapacitorPlugin(name = "StrukTraker")
           public class StrukTrakerPlugin extends Plugin {
+              private static final String ACCESS_PASSWORD = "admcarli";
+
+              private void requestPassword(PluginCall call, Intent intent) {
+                  getActivity().runOnUiThread(() -> {
+                      EditText passwordInput = new EditText(getActivity());
+                      passwordInput.setSingleLine(true);
+                      passwordInput.setInputType(
+                          InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD
+                      );
+                      passwordInput.setHint("Masukkan password akses");
+                      int pad = (int) (18 * getActivity().getResources().getDisplayMetrics().density);
+                      passwordInput.setPadding(pad, pad, pad, pad);
+
+                      AlertDialog dialog = new AlertDialog.Builder(getActivity())
+                          .setTitle("Verifikasi Akses")
+                          .setMessage("Masukkan password untuk membuka fitur ini.")
+                          .setView(passwordInput)
+                          .setNegativeButton("Batal", (d, which) -> call.reject("Akses dibatalkan."))
+                          .setPositiveButton("Buka", null)
+                          .create();
+
+                      dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                          .setOnClickListener(v -> {
+                              String entered = passwordInput.getText().toString();
+                              if (ACCESS_PASSWORD.equals(entered)) {
+                                  dialog.dismiss();
+                                  getActivity().startActivity(intent);
+                                  call.resolve();
+                              } else {
+                                  passwordInput.setError("Password salah");
+                                  passwordInput.setText("");
+                              }
+                          }));
+                      dialog.show();
+                  });
+              }
+
               @PluginMethod
               public void open(PluginCall call) {
-                  getActivity().runOnUiThread(() -> {
-                      getActivity().startActivity(
-                          new Intent(getActivity(), StrukTrakerActivity.class)
-                      );
-                      call.resolve();
-                  });
+                  Intent intent = new Intent(getActivity(), StrukTrakerActivity.class);
+                  requestPassword(call, intent);
               }
 
               @PluginMethod
@@ -231,10 +267,7 @@ jobs:
                   }
                   Intent intent = new Intent(getActivity(), StrukTrakerActivity.class);
                   intent.putExtra("stock_store_code", storeCode);
-                  getActivity().runOnUiThread(() -> {
-                      getActivity().startActivity(intent);
-                      call.resolve();
-                  });
+                  requestPassword(call, intent);
               }
           }
           EOF
@@ -562,6 +595,70 @@ jobs:
             }
             if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded',initStrukTrakerEntry);
             else initStrukTrakerEntry();
+          })();
+          </script>
+          <script>
+          /* CARRCLEREK_USER_MENU_LOCK_V1 */
+          (function(){
+            'use strict';
+            function nativeApp(){
+              var c=window.Capacitor;
+              return !!(c && typeof c.isNativePlatform==='function' && c.isNativePlatform());
+            }
+            function addProtectedTile(home, key, icon, title, subtitle, action){
+              if(home.querySelector('[data-carr-protected="'+key+'"]')) return;
+              var b=document.createElement('button');
+              b.type='button';
+              b.className='user-module-tile';
+              b.dataset.carrProtected=key;
+              b.innerHTML='<div class="user-module-icon">'+icon+'</div>'+
+                '<div class="user-module-name">'+title+'</div>'+
+                '<div class="user-module-sub">'+subtitle+'</div>';
+              b.addEventListener('click',action);
+              home.appendChild(b);
+            }
+            async function openStock(){
+              var cap=window.Capacitor;
+              var plugin=cap && cap.Plugins && cap.Plugins.StrukTraker;
+              if(!plugin || typeof plugin.openStockSTShift!=='function'){
+                alert('Fitur belum tersedia. Silakan perbarui aplikasi CarrClerek.');
+                return;
+              }
+              try{
+                var auth=await supa.auth.getUser();
+                if(auth.error || !auth.data || !auth.data.user) throw new Error('Sesi login tidak ditemukan.');
+                var profileResult=await supa.from('profiles').select('store_id').eq('id',auth.data.user.id).maybeSingle();
+                if(profileResult.error || !profileResult.data || !profileResult.data.store_id) throw new Error('Toko akun belum diatur.');
+                var storeResult=await supa.from('stores').select('code').eq('id',String(profileResult.data.store_id)).maybeSingle();
+                var code=storeResult.data && storeResult.data.code ? String(storeResult.data.code).trim() : '';
+                if(!code) throw new Error('Kode toko tidak ditemukan.');
+                await plugin.openStockSTShift({storeCode:code});
+              }catch(e){
+                if(e && e.message && e.message!=='Akses dibatalkan.') alert(e.message);
+                else if(!e || e.message!=='Akses dibatalkan.') alert('Stock ST Shift gagal dibuka.');
+              }
+            }
+            function install(){
+              if(!nativeApp()) return;
+              var home=document.getElementById('userModuleHome');
+              if(!home) return;
+              home.querySelectorAll('[data-user-module="po"],[data-user-module="selisih"]').forEach(function(x){x.remove();});
+              addProtectedTile(home,'struktraker','🧾','StrukTraker','Rekap struk di dalam aplikasi',function(){
+                var p=window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StrukTraker;
+                if(!p || typeof p.open!=='function'){alert('StrukTraker belum tersedia. Perbarui aplikasi CarrClerek.');return;}
+                Promise.resolve(p.open()).catch(function(e){
+                  if(e && e.message && e.message!=='Akses dibatalkan.') alert(e.message);
+                });
+              });
+              addProtectedTile(home,'stock-st-shift','📦','Stock ST Shift','Serah terima stok sesuai toko login',openStock);
+              document.querySelectorAll('#strukTrakerNativeCard,#stockSTShiftNativeCard').forEach(function(x){x.remove();});
+            }
+            if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',install);
+            else install();
+            var mo=new MutationObserver(install);
+            mo.observe(document.documentElement,{childList:true,subtree:true});
+            setTimeout(install,500);
+            setTimeout(install,1500);
           })();
           </script>
           """
