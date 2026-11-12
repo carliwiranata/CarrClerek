@@ -651,7 +651,7 @@ jobs:
                 });
               });
               addProtectedTile(home,'stock-st-shift','📦','Stock ST Shift','Serah terima stok sesuai toko login',openStock);
-              document.querySelectorAll('#strukTrakerNativeCard,#stockSTShiftNativeCard').forEach(function(x){x.remove();});
+              document.querySelectorAll('#strukTrakerNativeCard,#stockSTShiftNativeCard').forEach(function(x){x.hidden=true;});
             }
             if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',install);
             else install();
