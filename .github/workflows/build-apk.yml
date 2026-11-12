@@ -270,17 +270,6 @@ jobs:
                   requestPassword(call, intent);
               }
 
-              @PluginMethod
-              public void openJadwalSO(PluginCall call) {
-                  String storeCode = call.getString("storeCode", "").trim();
-                  if (!storeCode.matches("[A-Za-z0-9_-]{1,20}")) {
-                      call.reject("Kode toko tidak valid atau belum diatur.");
-                      return;
-                  }
-                  Intent intent = new Intent(getActivity(), StrukTrakerActivity.class);
-                  intent.putExtra("jadwal_so_store_code", storeCode);
-                  requestPassword(call, intent);
-              }
           }
           EOF
 
@@ -310,7 +299,6 @@ jobs:
           public class StrukTrakerActivity extends Activity {
               private static final String STRUKTRAKER_URL = "https://struktraker.lovable.app/";
               private static final String STOCK_ST_SHIFT_URL = "https://kalkulatorsaya.my.id/Catur/scan_serah_terima.html?toko=";
-              private static final String JADWAL_SO_URL = "https://kalkulatorsaya.my.id/Catur/JadwalSO.html?toko=";
               private static final int FILE_CHOOSER_REQUEST = 7412;
               private WebView webView;
               private ProgressBar progress;
@@ -340,11 +328,7 @@ jobs:
 
                   TextView title = new TextView(this);
                   String stockStoreCode = getIntent().getStringExtra("stock_store_code");
-                  String jadwalSOStoreCode = getIntent().getStringExtra("jadwal_so_store_code");
                   boolean stockMode = stockStoreCode != null && !stockStoreCode.trim().isEmpty();
-                  boolean jadwalSOMode = jadwalSOStoreCode != null && !jadwalSOStoreCode.trim().isEmpty();
-                  title.setText(stockMode ? "Stock ST Shift • " + stockStoreCode :
-                      (jadwalSOMode ? "Jadwal Stock Opname • " + jadwalSOStoreCode : "StrukTraker"));
                   title.setTextColor(Color.WHITE);
                   title.setTextSize(18);
                   title.setGravity(Gravity.CENTER_VERTICAL);
@@ -441,8 +425,6 @@ jobs:
                   String storeCode = getIntent().getStringExtra("stock_store_code");
                   if (storeCode != null && !storeCode.trim().isEmpty()) {
                       webView.loadUrl(STOCK_ST_SHIFT_URL + Uri.encode(storeCode.trim()));
-                  } else if (jadwalSOStoreCode != null && !jadwalSOStoreCode.trim().isEmpty()) {
-                      webView.loadUrl(JADWAL_SO_URL + Uri.encode(jadwalSOStoreCode.trim()));
                   } else {
                       webView.loadUrl(STRUKTRAKER_URL);
                   }
@@ -660,21 +642,6 @@ jobs:
                 else if(!e || e.message!=='Akses dibatalkan.') alert('Stock ST Shift gagal dibuka.');
               }
             }
-            async function openJadwalSO(){
-              var cap=window.Capacitor;
-              var plugin=cap && cap.Plugins && cap.Plugins.StrukTraker;
-              if(!plugin || typeof plugin.openJadwalSO!=='function'){
-                alert('Jadwal Stock Opname belum tersedia. Silakan perbarui aplikasi CarrClerek.');
-                return;
-              }
-              try{
-                var code=await getLoggedInStoreCode();
-                await plugin.openJadwalSO({storeCode:code});
-              }catch(e){
-                if(e && e.message && e.message!=='Akses dibatalkan.') alert(e.message);
-                else if(!e || e.message!=='Akses dibatalkan.') alert('Jadwal Stock Opname gagal dibuka.');
-              }
-            }
             function install(){
               if(!nativeApp()) return;
               var home=document.getElementById('userModuleHome');
@@ -688,7 +655,6 @@ jobs:
                 });
               });
               addProtectedTile(home,'stock-st-shift','📦','Stock ST Shift','Serah terima stok sesuai toko login',openStock);
-              addProtectedTile(home,'jadwal-stock-opname','📅','Jadwal Stock Opname','Jadwal SO sesuai toko login',openJadwalSO);
               document.querySelectorAll('#strukTrakerNativeCard,#stockSTShiftNativeCard').forEach(function(x){x.hidden=true;});
             }
             if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',install);
