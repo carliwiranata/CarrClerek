@@ -221,6 +221,21 @@ jobs:
                       call.resolve();
                   });
               }
+
+              @PluginMethod
+              public void openStockSTShift(PluginCall call) {
+                  String storeCode = call.getString("storeCode", "").trim();
+                  if (!storeCode.matches("[A-Za-z0-9_-]{1,20}")) {
+                      call.reject("Kode toko tidak valid atau belum diatur.");
+                      return;
+                  }
+                  Intent intent = new Intent(getActivity(), StrukTrakerActivity.class);
+                  intent.putExtra("stock_store_code", storeCode);
+                  getActivity().runOnUiThread(() -> {
+                      getActivity().startActivity(intent);
+                      call.resolve();
+                  });
+              }
           }
           EOF
 
@@ -248,8 +263,8 @@ jobs:
           import android.webkit.ValueCallback;
 
           public class StrukTrakerActivity extends Activity {
-              private static final String START_URL = "https://struktraker.lovable.app/";
-              private static final String ALLOWED_HOST = "struktraker.lovable.app";
+              private static final String STRUKTRAKER_URL = "https://struktraker.lovable.app/";
+              private static final String STOCK_ST_SHIFT_URL = "https://kalkulatorsaya.my.id/Catur/scan_serah_terima.html?toko=";
               private static final int FILE_CHOOSER_REQUEST = 7412;
               private WebView webView;
               private ProgressBar progress;
@@ -278,7 +293,9 @@ jobs:
                   back.setOnClickListener(v -> finish());
 
                   TextView title = new TextView(this);
-                  title.setText("StrukTraker");
+                  String stockStoreCode = getIntent().getStringExtra("stock_store_code");
+                  boolean stockMode = stockStoreCode != null && !stockStoreCode.trim().isEmpty();
+                  title.setText(stockMode ? "Stock ST Shift • " + stockStoreCode : "StrukTraker");
                   title.setTextColor(Color.WHITE);
                   title.setTextSize(18);
                   title.setGravity(Gravity.CENTER_VERTICAL);
@@ -313,9 +330,10 @@ jobs:
                       public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                           Uri uri = request.getUrl();
                           String host = uri.getHost();
-                          if ("https".equalsIgnoreCase(uri.getScheme()) &&
-                              host != null && (ALLOWED_HOST.equalsIgnoreCase(host) ||
-                              host.toLowerCase().endsWith("." + ALLOWED_HOST))) {
+                          boolean allowedHost = host != null &&
+                              ("struktraker.lovable.app".equalsIgnoreCase(host) ||
+                               "kalkulatorsaya.my.id".equalsIgnoreCase(host));
+                          if ("https".equalsIgnoreCase(uri.getScheme()) && allowedHost) {
                               return false;
                           }
                           Toast.makeText(StrukTrakerActivity.this,
@@ -371,7 +389,12 @@ jobs:
                   root.addView(webView, new LinearLayout.LayoutParams(
                       LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
                   setContentView(root);
-                  webView.loadUrl(START_URL);
+                  String storeCode = getIntent().getStringExtra("stock_store_code");
+                  if (storeCode != null && !storeCode.trim().isEmpty()) {
+                      webView.loadUrl(STOCK_ST_SHIFT_URL + Uri.encode(storeCode.trim()));
+                  } else {
+                      webView.loadUrl(STRUKTRAKER_URL);
+                  }
               }
 
               @Override
@@ -423,6 +446,74 @@ jobs:
               script = r"""
           <script>
           /* CARRCLEREK_STRUKTRAKER_NATIVE_ENTRY */
+          /* CARRCLEREK_STOCK_ST_SHIFT_NATIVE_ENTRY */
+          (function(){
+            'use strict';
+            var storeCode = '';
+            var lookupRunning = false;
+            async function loadStockStoreCode(profile){
+              if(!profile || !profile.store_id){ storeCode=''; return; }
+              if(lookupRunning) return;
+              lookupRunning = true;
+              try{
+                var result = await supa.from('stores').select('code').eq('id',String(profile.store_id)).maybeSingle();
+                storeCode = result && result.data && result.data.code ? String(result.data.code).trim() : '';
+                window.__stockSTShiftStoreCode = storeCode;
+                refreshStockCard();
+              }catch(e){
+                console.warn('Stock ST Shift: gagal membaca kode toko',e);
+                storeCode='';
+              }finally{ lookupRunning=false; }
+            }
+            var originalShowUserApp = window.showUserApp;
+            if(typeof originalShowUserApp === 'function'){
+              window.showUserApp = function(profile,user){
+                var result = originalShowUserApp.apply(this,arguments);
+                loadStockStoreCode(profile);
+                return result;
+              };
+            }
+            function refreshStockCard(){
+              var cap=window.Capacitor;
+              if(!cap || typeof cap.isNativePlatform!=='function' || !cap.isNativePlatform()) return;
+              var shell=document.getElementById('appShell');
+              var admin=document.getElementById('adminPage');
+              var login=document.getElementById('loginPage');
+              var visible=!!(shell && getComputedStyle(shell).display!=='none' &&
+                shell.getClientRects().length && (!admin || !admin.classList.contains('show')) &&
+                (!login || !login.classList.contains('show')));
+              var card=document.getElementById('stockSTShiftNativeCard');
+              if(!visible){ if(card)card.remove(); return; }
+              if(!storeCode){ if(card)card.remove(); return; }
+              if(card && card.isConnected) return;
+              card=document.createElement('section');
+              card.className='card';
+              card.id='stockSTShiftNativeCard';
+              card.innerHTML='<div style="font-size:21px;font-weight:900;margin-bottom:7px">📦 Stock ST Shift</div>'+
+                '<div class="muted" style="margin-bottom:14px">Kode toko otomatis: <b>'+storeCode.replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];})+'</b></div>'+
+                '<button type="button" class="btn" id="stockSTShiftNativeOpen">BUKA STOCK ST SHIFT</button>';
+              var anchor=document.getElementById('strukTrakerNativeCard')||document.getElementById('authUserBar');
+              if(anchor && anchor.parentNode)anchor.parentNode.insertBefore(card,anchor.nextSibling);
+              else shell.insertBefore(card,shell.firstChild);
+              card.querySelector('#stockSTShiftNativeOpen').addEventListener('click',function(){
+                var button=this;
+                var cap=window.Capacitor;
+                var plugin=cap && cap.Plugins && cap.Plugins.StrukTraker;
+                if(!plugin || typeof plugin.openStockSTShift!=='function'){
+                  alert('Fitur Stock ST Shift belum tersedia. Perbarui aplikasi CarrClerek.');
+                  return;
+                }
+                button.disabled=true;button.textContent='MEMBUKA...';
+                Promise.resolve(plugin.openStockSTShift({storeCode:storeCode})).catch(function(){
+                  alert('Stock ST Shift gagal dibuka. Periksa koneksi dan coba lagi.');
+                }).finally(function(){button.disabled=false;button.textContent='BUKA STOCK ST SHIFT';});
+              });
+            }
+            function refresh(){refreshStockCard();}
+            if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',refresh);
+            else refresh();
+            new MutationObserver(refresh).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
+          })();
           (function(){
             'use strict';
             function initStrukTrakerEntry(){
