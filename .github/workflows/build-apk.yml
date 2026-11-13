@@ -44,6 +44,11 @@ jobs:
           npm install --save-dev @capacitor/cli@7.4.4
           npm install @capacitor/android@7.4.4
 
+      - name: Install Live Update SDK
+        run: |
+          npm install @capawesome/capacitor-live-update@v7-lts
+          npm install --save-dev esbuild
+
       - name: Prepare Web Files
         run: |
           rm -rf www
@@ -58,6 +63,108 @@ jobs:
             ./ www/
 
           test -f www/index.html
+
+      # ==========================================================
+      # SELF-HOSTED OTA LIVE UPDATE (SUPABASE STORAGE)
+      # ==========================================================
+      - name: Prepare Live Update Client
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          set -e
+          cat > live-update-entry.js <<'EOF'
+          import { LiveUpdate } from '@capawesome/capacitor-live-update';
+
+          const MANIFEST_URL = __OTA_MANIFEST_URL__;
+
+          (function () {
+            if (!window.Capacitor || !window.Capacitor.isNativePlatform ||
+                !window.Capacitor.isNativePlatform()) return;
+
+            let started = false;
+            async function startCarrClerekLiveUpdate() {
+              if (started || !MANIFEST_URL) return;
+              started = true;
+              try {
+                // Mark this bundle healthy before attempting another update.
+                await LiveUpdate.ready();
+
+                const response = await fetch(MANIFEST_URL + (MANIFEST_URL.includes('?') ? '&' : '?') +
+                  't=' + Date.now(), { cache: 'no-store' });
+                if (!response.ok) return;
+
+                const release = await response.json();
+                if (!release || !release.bundleId || !release.url || !release.checksum) return;
+
+                const nativeVersion = await LiveUpdate.getVersionCode();
+                if (release.nativeMinVersionCode &&
+                    Number(nativeVersion.versionCode) < Number(release.nativeMinVersionCode)) return;
+                if (release.nativeMaxVersionCode &&
+                    Number(nativeVersion.versionCode) > Number(release.nativeMaxVersionCode)) return;
+
+                const current = await LiveUpdate.getCurrentBundle();
+                const next = await LiveUpdate.getNextBundle();
+                if (current.bundleId === release.bundleId || next.bundleId === release.bundleId) return;
+
+                await LiveUpdate.downloadBundle({
+                  bundleId: String(release.bundleId),
+                  url: String(release.url),
+                  checksum: String(release.checksum)
+                });
+                await LiveUpdate.setNextBundle({ bundleId: String(release.bundleId) });
+
+                // The downloaded update is activated safely on the next app launch.
+                window.dispatchEvent(new CustomEvent('carrclerek:live-update-ready', {
+                  detail: { bundleId: release.bundleId, version: release.version || '' }
+                }));
+                console.info('[CarrClerek OTA] Update siap diterapkan saat aplikasi dibuka kembali.');
+              } catch (error) {
+                console.warn('[CarrClerek OTA] Pemeriksaan update dilewati:', error);
+              }
+            }
+
+            if (document.readyState === 'complete') {
+              startCarrClerekLiveUpdate();
+            } else {
+              window.addEventListener('load', startCarrClerekLiveUpdate, { once: true });
+            }
+            document.addEventListener('visibilitychange', function () {
+              if (document.visibilityState === 'visible') startCarrClerekLiveUpdate();
+            });
+          })();
+          EOF
+
+          OTA_MANIFEST_URL=""
+          if [ -n "$SUPABASE_URL" ]; then
+            OTA_MANIFEST_URL="${SUPABASE_URL%/}/storage/v1/object/public/carrclerek-updates/latest.json"
+          fi
+
+          npx esbuild live-update-entry.js --bundle --format=iife --target=es2020 \
+            --outfile=www/carrclerek-live-update.js \
+            --define:__OTA_MANIFEST_URL__="'${OTA_MANIFEST_URL}'"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("capacitor.config.json")
+          import json
+          cfg = json.loads(p.read_text(encoding="utf-8"))
+          cfg.setdefault("plugins", {})["LiveUpdate"] = {
+              "autoBlockRolledBackBundles": True,
+              "readyTimeout": 10000
+          }
+          p.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+
+          index = Path("www/index.html")
+          html = index.read_text(encoding="utf-8")
+          tag = '<script src="carrclerek-live-update.js"></script>'
+          if tag not in html:
+              pos = html.lower().rfind("</body>")
+              if pos >= 0:
+                  html = html[:pos] + tag + "\\n" + html[pos:]
+              else:
+                  html += tag
+              index.write_text(html, encoding="utf-8")
+          PY
 
       - name: Create Capacitor Configuration
         run: |
@@ -754,6 +861,67 @@ jobs:
             output/CarrClerek-AyamPanggangLAVA-debug.apk
 
           ls -lh output/CarrClerek-AyamPanggangLAVA-debug.apk
+
+      # ==========================================================
+      # PUBLISH WEB LAYER OTA BUNDLE TO SUPABASE STORAGE
+      # Required GitHub Actions secrets:
+      # SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
+      # ==========================================================
+      - name: Publish CarrClerek Live Update to Supabase
+        if: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_SERVICE_ROLE_KEY != '' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          BUCKET="carrclerek-updates"
+          BUNDLE_ID="${GITHUB_SHA}"
+          mkdir -p output
+          (cd www && zip -qr "../output/carrclerek-web-${BUNDLE_ID}.zip" .)
+          ZIP="output/carrclerek-web-${BUNDLE_ID}.zip"
+          CHECKSUM="$(sha256sum "$ZIP" | awk '{print $1}')"
+
+          # Create a public-read bucket if it does not exist yet.
+          curl -sS -o /tmp/create-bucket.json -w "%{http_code}" \
+            -X POST "${SUPABASE_URL%/}/storage/v1/bucket" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"id\":\"$BUCKET\",\"name\":\"$BUCKET\",\"public\":true}" > /tmp/bucket-status.txt
+          STATUS="$(cat /tmp/bucket-status.txt)"
+          if [ "$STATUS" != "200" ] && [ "$STATUS" != "201" ] && [ "$STATUS" != "409" ]; then
+            cat /tmp/create-bucket.json
+            echo "Gagal menyiapkan bucket Supabase (HTTP $STATUS)."
+            exit 1
+          fi
+
+          curl -fsS -X POST \
+            "${SUPABASE_URL%/}/storage/v1/object/$BUCKET/bundles/$BUNDLE_ID.zip" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/zip" \
+            -H "x-upsert: true" \
+            --data-binary "@$ZIP" > /tmp/ota-upload.json
+
+          BUNDLE_URL="${SUPABASE_URL%/}/storage/v1/object/public/$BUCKET/bundles/$BUNDLE_ID.zip"
+          printf '{"bundleId":"%s","version":"%s","url":"%s","checksum":"%s","nativeMinVersionCode":1}\n' \
+            "$BUNDLE_ID" "$GITHUB_SHA" "$BUNDLE_URL" "$CHECKSUM" > output/latest.json
+
+          curl -fsS -X POST \
+            "${SUPABASE_URL%/}/storage/v1/object/$BUCKET/latest.json" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -H "x-upsert: true" \
+            --data-binary "@output/latest.json" > /tmp/ota-manifest-upload.json
+
+          echo "Live Update berhasil dipublikasikan: $BUNDLE_ID"
+          echo "Manifest: ${SUPABASE_URL%/}/storage/v1/object/public/$BUCKET/latest.json"
+
+      - name: Explain Missing Supabase OTA Secrets
+        if: ${{ secrets.SUPABASE_URL == '' || secrets.SUPABASE_SERVICE_ROLE_KEY == '' }}
+        run: |
+          echo "::warning::OTA belum dipublikasikan. Tambahkan GitHub Actions secrets SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY agar bundle otomatis dikirim ke Supabase Storage."
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
