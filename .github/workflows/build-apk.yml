@@ -663,7 +663,7 @@ jobs:
                 card=document.createElement('section');
                 card.id='retailDailyMotivation';
                 card.setAttribute('aria-live','polite');
-                card.style.cssText='display:flex;align-items:flex-start;gap:12px;margin:0 0 14px;padding:15px 16px;border-radius:16px;background:linear-gradient(135deg,#fff4e8,#fff);border:1px solid #f2d7bd;box-shadow:0 3px 12px rgba(80,45,20,.06);';
+                card.style.cssText='display:flex;box-sizing:border-box;width:100%;max-width:100%;min-width:0;grid-column:1 / -1;flex:0 0 100%;align-items:flex-start;gap:12px;margin:0 0 14px;padding:15px 16px;border-radius:16px;background:linear-gradient(135deg,#fff4e8,#fff);border:1px solid #f2d7bd;box-shadow:0 3px 12px rgba(80,45,20,.06);';
                 card.innerHTML='<div style="font-size:25px;line-height:1">💡</div><div style="min-width:0"><div style="font-size:12px;font-weight:900;letter-spacing:.7px;color:#a34b16;text-transform:uppercase;margin-bottom:5px">Motivasi Hari Ini</div><div id="retailDailyMotivationText" style="font-size:14px;line-height:1.5;font-weight:700;color:#30251f"></div></div>';
                 home.insertBefore(card,home.firstChild);
               } else if(card.parentNode!==home){
