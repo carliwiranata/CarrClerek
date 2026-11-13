@@ -83,11 +83,12 @@ jobs:
 
             let started = false;
             async function startCarrClerekLiveUpdate() {
-              if (started || !MANIFEST_URL) return;
+              if (started) return;
               started = true;
               try {
                 // Mark this bundle healthy before attempting another update.
                 await LiveUpdate.ready();
+                if (!MANIFEST_URL) return;
 
                 const response = await fetch(MANIFEST_URL + (MANIFEST_URL.includes('?') ? '&' : '?') +
                   't=' + Date.now(), { cache: 'no-store' });
@@ -145,15 +146,6 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
-          p = Path("capacitor.config.json")
-          import json
-          cfg = json.loads(p.read_text(encoding="utf-8"))
-          cfg.setdefault("plugins", {})["LiveUpdate"] = {
-              "autoBlockRolledBackBundles": True,
-              "readyTimeout": 10000
-          }
-          p.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
-
           index = Path("www/index.html")
           html = index.read_text(encoding="utf-8")
           tag = '<script src="carrclerek-live-update.js"></script>'
@@ -183,6 +175,20 @@ jobs:
         run: |
           rm -rf android
           npx cap add android
+
+      - name: Configure Live Update Plugin
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p = Path("capacitor.config.json")
+          cfg = json.loads(p.read_text(encoding="utf-8"))
+          cfg.setdefault("plugins", {})["LiveUpdate"] = {
+              "autoBlockRolledBackBundles": True,
+              "readyTimeout": 10000
+          }
+          p.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+          PY
 
       # ==========================================================
       # LOCATION PERMISSION
