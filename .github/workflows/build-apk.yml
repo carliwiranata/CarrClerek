@@ -642,10 +642,50 @@ jobs:
                 else if(!e || e.message!=='Akses dibatalkan.') alert('Stock ST Shift gagal dibuka.');
               }
             }
+            var retailMotivations = [
+              'Senyum, sapa, dan salam. Pelayanan terbaik dimulai dari hal sederhana.',
+              'Ketelitian hari ini mencegah kesalahan stok dan transaksi esok hari.',
+              'Datang tepat waktu, bekerja dengan tanggung jawab, pulang dengan bangga.',
+              'Rak yang rapi membuat pelanggan nyaman dan pekerjaan lebih mudah.',
+              'Jangan hanya mengejar target, berikan pelayanan yang membuat pelanggan kembali.',
+              'Di dunia retail, kerja sama tim adalah kunci toko yang hebat.',
+              'Tetap ramah meski toko sedang ramai. Profesional terlihat saat situasi sibuk.',
+              'Cek dengan teliti, catat dengan benar, dan tuntaskan setiap tanggung jawab.',
+              'Setiap pelanggan itu penting. Layani dengan tulus dan sepenuh hati.',
+              'Disiplin dalam hal kecil membangun hasil besar untuk seluruh tim.',
+              'Stok akurat, area bersih, pelayanan cepat: tiga langkah menuju toko terbaik.',
+              'Jadikan tantangan hari ini sebagai pengalaman untuk menjadi lebih baik.'
+            ];
+            var motivationTimer = null;
+            function installRetailMotivation(home){
+              var card=document.getElementById('retailDailyMotivation');
+              if(!card){
+                card=document.createElement('section');
+                card.id='retailDailyMotivation';
+                card.setAttribute('aria-live','polite');
+                card.style.cssText='display:flex;align-items:flex-start;gap:12px;margin:0 0 14px;padding:15px 16px;border-radius:16px;background:linear-gradient(135deg,#fff4e8,#fff);border:1px solid #f2d7bd;box-shadow:0 3px 12px rgba(80,45,20,.06);';
+                card.innerHTML='<div style="font-size:25px;line-height:1">💡</div><div style="min-width:0"><div style="font-size:12px;font-weight:900;letter-spacing:.7px;color:#a34b16;text-transform:uppercase;margin-bottom:5px">Motivasi Hari Ini</div><div id="retailDailyMotivationText" style="font-size:14px;line-height:1.5;font-weight:700;color:#30251f"></div></div>';
+                home.insertBefore(card,home.firstChild);
+              } else if(card.parentNode!==home){
+                home.insertBefore(card,home.firstChild);
+              }
+              var text=card.querySelector('#retailDailyMotivationText');
+              if(text && !text.dataset.rotationReady){
+                var index=Math.floor(Date.now()/86400000)%retailMotivations.length;
+                text.textContent=retailMotivations[index];
+                text.dataset.rotationReady='1';
+                if(motivationTimer) clearInterval(motivationTimer);
+                motivationTimer=setInterval(function(){
+                  index=(index+1)%retailMotivations.length;
+                  text.textContent=retailMotivations[index];
+                },10000);
+              }
+            }
             function install(){
               if(!nativeApp()) return;
               var home=document.getElementById('userModuleHome');
               if(!home) return;
+              installRetailMotivation(home);
               home.querySelectorAll('[data-user-module="po"],[data-user-module="selisih"]').forEach(function(x){x.remove();});
               addProtectedTile(home,'struktraker','🧾','StrukTraker','Rekap struk di dalam aplikasi',function(){
                 var p=window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StrukTraker;
