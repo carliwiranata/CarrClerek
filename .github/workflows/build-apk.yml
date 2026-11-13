@@ -874,7 +874,7 @@ jobs:
       # SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
       # ==========================================================
       - name: Publish CarrClerek Live Update to Supabase
-        if: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_SERVICE_ROLE_KEY != '' }}
+        if: ${{ env.SUPABASE_URL != '' && env.SUPABASE_SERVICE_ROLE_KEY != '' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -925,7 +925,10 @@ jobs:
           echo "Manifest: ${SUPABASE_URL%/}/storage/v1/object/public/$BUCKET/latest.json"
 
       - name: Explain Missing Supabase OTA Secrets
-        if: ${{ secrets.SUPABASE_URL == '' || secrets.SUPABASE_SERVICE_ROLE_KEY == '' }}
+        if: ${{ env.SUPABASE_URL == '' || env.SUPABASE_SERVICE_ROLE_KEY == '' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           echo "::warning::OTA belum dipublikasikan. Tambahkan GitHub Actions secrets SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY agar bundle otomatis dikirim ke Supabase Storage."
 
