@@ -457,11 +457,13 @@ jobs:
                   TextView title = new TextView(this);
                   String stockStoreCode = getIntent().getStringExtra("stock_store_code");
                   boolean stockMode = stockStoreCode != null && !stockStoreCode.trim().isEmpty();
+                  boolean stockOpnameMode = getIntent().getBooleanExtra("stock_opname_mode", false);
                   title.setTextColor(Color.WHITE);
                   title.setTextSize(18);
                   title.setGravity(Gravity.CENTER_VERTICAL);
                   title.setPadding(12, 0, 0, 0);
                   title.setTypeface(null, android.graphics.Typeface.BOLD);
+                  title.setText(stockOpnameMode ? "Stock Opname" : (stockMode ? "Stock ST Shift" : "StrukTraker"));
 
                   bar.addView(back, new LinearLayout.LayoutParams(52, 52));
                   bar.addView(title, new LinearLayout.LayoutParams(0, 52, 1));
@@ -493,7 +495,8 @@ jobs:
                           String host = uri.getHost();
                           boolean allowedHost = host != null &&
                               ("struktraker.lovable.app".equalsIgnoreCase(host) ||
-                               "kalkulatorsaya.my.id".equalsIgnoreCase(host));
+                               "kalkulatorsaya.my.id".equalsIgnoreCase(host) ||
+                               "app-bmuaili7pn29.appmedo.com".equalsIgnoreCase(host));
                           if ("https".equalsIgnoreCase(uri.getScheme()) && allowedHost) {
                               return false;
                           }
@@ -551,7 +554,9 @@ jobs:
                       LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
                   setContentView(root);
                   String storeCode = getIntent().getStringExtra("stock_store_code");
-                  if (storeCode != null && !storeCode.trim().isEmpty()) {
+                  if (stockOpnameMode) {
+                      webView.loadUrl(STOCK_OPNAME_URL);
+                  } else if (storeCode != null && !storeCode.trim().isEmpty()) {
                       webView.loadUrl(STOCK_ST_SHIFT_URL + Uri.encode(storeCode.trim()));
                   } else {
                       webView.loadUrl(STRUKTRAKER_URL);
