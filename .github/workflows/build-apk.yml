@@ -755,6 +755,20 @@ jobs:
                 else if(!e || e.message!=='Akses dibatalkan.') alert('Stock ST Shift gagal dibuka.');
               }
             }
+            async function openStockOpname(){
+              var cap=window.Capacitor;
+              var plugin=cap && cap.Plugins && cap.Plugins.StrukTraker;
+              if(!plugin || typeof plugin.openStockOpname!=='function'){
+                alert('Fitur Stock Opname belum tersedia. Perbarui aplikasi CarrClerek.');
+                return;
+              }
+              try{
+                var code=await getLoggedInStoreCode();
+                await plugin.openStockOpname({storeCode:code});
+              }catch(e){
+                alert(e && e.message ? e.message : 'Stock Opname gagal dibuka.');
+              }
+            }
             var retailMotivations = [
               'Senyum, sapa, dan salam. Pelayanan terbaik dimulai dari hal sederhana.',
               'Ketelitian hari ini mencegah kesalahan stok dan transaksi esok hari.',
@@ -808,6 +822,7 @@ jobs:
                 });
               });
               addProtectedTile(home,'stock-st-shift','📦','Stock ST Shift','Serah terima stok sesuai toko login',openStock);
+              addProtectedTile(home,'stock-opname','📊','Stock Opname','Laporan prosentase SO sesuai toko login',openStockOpname);
               document.querySelectorAll('#strukTrakerNativeCard,#stockSTShiftNativeCard').forEach(function(x){x.hidden=true;});
             }
             if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',install);
