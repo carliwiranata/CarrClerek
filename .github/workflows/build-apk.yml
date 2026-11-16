@@ -510,10 +510,19 @@ jobs:
                           super.onPageFinished(view, url);
                           if (stockOpnameMode && stockStoreCode != null) {
                               String code = org.json.JSONObject.quote(stockStoreCode);
-                              String js = "(function(){var c=" + code + ";var a=[].slice.call(document.querySelectorAll('input'));"
+                              String js = "(function(){"
+                                  + "var c=" + code + ";"
+                                  + "function fillStore(){var a=[].slice.call(document.querySelectorAll('input'));"
                                   + "var x=a.find(function(e){var t=((e.placeholder||'')+' '+(e.name||'')+' '+(e.id||'')+' '+(e.getAttribute('aria-label')||'')).toLowerCase();return t.indexOf('kode toko')>=0||t.indexOf('storecode')>=0||t.indexOf('store code')>=0;});"
                                   + "if(!x)x=a.find(function(e){return e.parentElement&&/masukan kode toko/i.test(e.parentElement.innerText||'');});"
-                                  + "if(x){var d=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');d.set.call(x,c);x.dispatchEvent(new Event('input',{bubbles:true}));x.dispatchEvent(new Event('change',{bubbles:true}));x.readOnly=true;x.setAttribute('readonly','readonly');x.style.background='#f3f4f6';}})();";
+                                  + "if(x&&x.value!==c){var d=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');if(d&&d.set)d.set.call(x,c);else x.value=c;x.dispatchEvent(new Event('input',{bubbles:true}));x.dispatchEvent(new Event('change',{bubbles:true}));}"
+                                  + "if(x){x.readOnly=true;x.setAttribute('readonly','readonly');x.style.background='#f3f4f6';}}"
+                                  + "function openStockMenu(){if(window.__carrStockMenuOpened)return;var all=[].slice.call(document.querySelectorAll('a,button,[role=button],li,div,span'));"
+                                  + "var el=all.find(function(e){return (e.innerText||'').replace(/\\s+/g,' ').trim().toLowerCase()==='stock opname';});"
+                                  + "if(el){var target=el.closest('a,button,[role=button]')||el;window.__carrStockMenuOpened=true;target.click();}}"
+                                  + "function scan(){fillStore();openStockMenu();}"
+                                  + "scan();if(!window.__carrStockObserver){window.__carrStockObserver=new MutationObserver(scan);window.__carrStockObserver.observe(document.documentElement,{childList:true,subtree:true,attributes:true});}"
+                                  + "})();";
                               view.evaluateJavascript(js, null);
                           }
                       }
