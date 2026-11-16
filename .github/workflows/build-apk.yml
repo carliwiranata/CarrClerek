@@ -506,6 +506,19 @@ jobs:
                       }
 
                       @Override
+                      public void onPageFinished(WebView view, String url) {
+                          super.onPageFinished(view, url);
+                          if (stockOpnameMode && stockStoreCode != null) {
+                              String code = org.json.JSONObject.quote(stockStoreCode);
+                              String js = "(function(){var c=" + code + ";var a=[].slice.call(document.querySelectorAll('input'));"
+                                  + "var x=a.find(function(e){var t=((e.placeholder||'')+' '+(e.name||'')+' '+(e.id||'')+' '+(e.getAttribute('aria-label')||'')).toLowerCase();return t.indexOf('kode toko')>=0||t.indexOf('storecode')>=0||t.indexOf('store code')>=0;});"
+                                  + "if(!x)x=a.find(function(e){return e.parentElement&&/masukan kode toko/i.test(e.parentElement.innerText||'');});"
+                                  + "if(x){var d=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');d.set.call(x,c);x.dispatchEvent(new Event('input',{bubbles:true}));x.dispatchEvent(new Event('change',{bubbles:true}));x.readOnly=true;x.setAttribute('readonly','readonly');x.style.background='#f3f4f6';}})();";
+                              view.evaluateJavascript(js, null);
+                          }
+                      }
+
+                      @Override
                       public void onReceivedError(WebView view,
                           android.webkit.WebResourceRequest request,
                           android.webkit.WebResourceError error) {
