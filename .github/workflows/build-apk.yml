@@ -383,6 +383,20 @@ jobs:
                   requestPassword(call, intent);
               }
 
+              @PluginMethod
+              public void openStockOpname(PluginCall call) {
+                  String storeCode = call.getString("storeCode", "").trim();
+                  if (!storeCode.matches("[A-Za-z0-9_-]{1,20}")) {
+                      call.reject("Kode toko tidak valid atau belum diatur.");
+                      return;
+                  }
+                  Intent intent = new Intent(getActivity(), StrukTrakerActivity.class);
+                  intent.putExtra("stock_opname_mode", true);
+                  intent.putExtra("stock_store_code", storeCode);
+                  getActivity().startActivity(intent);
+                  call.resolve();
+              }
+
           }
           EOF
 
@@ -412,6 +426,7 @@ jobs:
           public class StrukTrakerActivity extends Activity {
               private static final String STRUKTRAKER_URL = "https://struktraker.lovable.app/";
               private static final String STOCK_ST_SHIFT_URL = "https://kalkulatorsaya.my.id/Catur/scan_serah_terima.html?toko=";
+              private static final String STOCK_OPNAME_URL = "https://app-bmuaili7pn29.appmedo.com/dashboard";
               private static final int FILE_CHOOSER_REQUEST = 7412;
               private WebView webView;
               private ProgressBar progress;
