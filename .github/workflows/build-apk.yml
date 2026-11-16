@@ -812,6 +812,37 @@ jobs:
                 else if(!e || e.message!=='Akses dibatalkan.') alert('Stock ST Shift gagal dibuka.');
               }
             }
+            function askStockPassword(){
+              return new Promise(function(resolve){
+                var overlay=document.createElement('div');
+                overlay.style.cssText='position:fixed;inset:0;z-index:2147483646;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;';
+                var panel=document.createElement('div');
+                panel.style.cssText='width:100%;max-width:400px;background:#fff;border-radius:16px;padding:20px;box-sizing:border-box;color:#171717;font-family:Arial,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.35);';
+                panel.innerHTML='<div style="font-size:18px;font-weight:900;margin-bottom:8px">Verifikasi Stock Opname</div>'+
+                  '<div style="font-size:13px;color:#555;margin-bottom:14px">Masukkan password rahasia untuk melanjutkan.</div>'+
+                  '<input id="carrStockPasswordInput" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" placeholder="Password" style="display:block;width:100%;box-sizing:border-box;padding:13px 12px;border:1px solid #ccc;border-radius:10px;font-size:16px;margin-bottom:14px;color:#111;background:#fff;-webkit-text-security:disc" />'+
+                  '<div style="display:flex;gap:10px"><button id="carrStockPasswordCancel" type="button" style="flex:1;border:0;border-radius:10px;padding:13px;background:#e5e7eb;color:#111;font-weight:800">BATAL</button>'+
+                  '<button id="carrStockPasswordSubmit" type="button" style="flex:1;border:0;border-radius:10px;padding:13px;background:#b91c1c;color:#fff;font-weight:800">VERIFIKASI</button></div>';
+                overlay.appendChild(panel);
+                document.body.appendChild(overlay);
+                var input=panel.querySelector('#carrStockPasswordInput');
+                var done=false;
+                function finish(value){
+                  if(done) return;
+                  done=true;
+                  overlay.remove();
+                  resolve(value);
+                }
+                panel.querySelector('#carrStockPasswordCancel').addEventListener('click',function(){finish(null);});
+                panel.querySelector('#carrStockPasswordSubmit').addEventListener('click',function(){finish(input.value);});
+                input.addEventListener('keydown',function(event){
+                  if(event.key==='Enter'){event.preventDefault();finish(input.value);}
+                  if(event.key==='Escape'){finish(null);}
+                });
+                overlay.addEventListener('click',function(event){if(event.target===overlay) finish(null);});
+                input.focus();
+              });
+            }
             async function openStockOpname(){
               var cap=window.Capacitor;
               var plugin=cap && cap.Plugins && cap.Plugins.StrukTraker;
@@ -821,7 +852,7 @@ jobs:
               }
               try{
                 var code=await getLoggedInStoreCode();
-                var password=window.prompt('Masukkan password rahasia untuk membuka Stock Opname.');
+                var password=await askStockPassword();
                 if(password===null) return;
                 var verified=await supa.functions.invoke('stock-opname-verify',{body:{password:String(password)}});
                 if(verified.error || !verified.data || verified.data.ok!==true){
