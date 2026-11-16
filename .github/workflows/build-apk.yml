@@ -520,7 +520,8 @@ jobs:
                                   + "function openStockMenu(){if(window.__carrStockMenuOpened)return;var all=[].slice.call(document.querySelectorAll('a,button,[role=button],li,div,span'));"
                                   + "var el=all.find(function(e){return (e.innerText||'').replace(/\\s+/g,' ').trim().toLowerCase()==='stock opname';});"
                                   + "if(el){var target=el.closest('a,button,[role=button]')||el;window.__carrStockMenuOpened=true;target.click();}}"
-                                  + "function scan(){fillStore();openStockMenu();}"
+                                  + "function lockCloseButton(){var els=[].slice.call(document.querySelectorAll('h1,h2,h3,[role=heading],div,span'));var title=els.find(function(e){return (e.innerText||'').replace(/\\s+/g,' ').trim().toLowerCase()==='stock opname';});if(!title)return;var p=title.parentElement;for(var i=0;p&&i<4;i++,p=p.parentElement){var bs=[].slice.call(p.querySelectorAll('button,a,[role=button]'));var x=bs.find(function(b){var t=((b.innerText||'')+' '+(b.getAttribute('aria-label')||'')+' '+(b.getAttribute('title')||'')).trim().toLowerCase();return t==='x'||t==='×'||t==='close'||t==='tutup'||/close|tutup/.test(t);});if(x){x.style.setProperty('display','none','important');x.setAttribute('aria-hidden','true');x.setAttribute('tabindex','-1');break;}}}"
+                                  + "function scan(){fillStore();openStockMenu();lockCloseButton();}"
                                   + "scan();if(!window.__carrStockObserver){window.__carrStockObserver=new MutationObserver(scan);window.__carrStockObserver.observe(document.documentElement,{childList:true,subtree:true,attributes:true});}"
                                   + "})();";
                               view.evaluateJavascript(js, null);
