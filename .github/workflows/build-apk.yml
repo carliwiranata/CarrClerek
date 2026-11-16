@@ -824,7 +824,61 @@ jobs:
               }
               try{
                 var code=await getLoggedInStoreCode();
-                await plugin.openStockOpname({storeCode:code});
+                var password=window.prompt('Masukkan password akses Stock Opname.\nFormat: carli + tanggal (ddMMyy) + jam WIB (HH).');
+                if(password===null) return;
+                var verified=await supa.functions.invoke('stock-opname-verify',{body:{password:String(password)}});
+                if(verified.error || !verified.data || verified.data.ok!==true){
+                  var reason=verified.data && verified.data.error ? verified.data.error : (verified.error && verified.error.message ? verified.error.message : 'Verifikasi gagal.');
+                  throw new Error(reason);
+                }
+
+                var overlay=document.createElement('div');
+                overlay.id='carrStockOpnameWarning';
+                overlay.style.cssText='position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;';
+                var panel=document.createElement('div');
+                panel.style.cssText='width:100%;max-width:440px;background:#fff;border-radius:18px;padding:22px;box-sizing:border-box;color:#171717;font-family:Arial,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.35);';
+                panel.innerHTML='<div style="font-size:20px;font-weight:900;color:#b91c1c;margin-bottom:12px">⚠️ PERINGATAN DAN KERAHASIAAN DATA</div>'+
+                  '<div style="font-size:14px;line-height:1.65;margin-bottom:10px">Dilarang menyebarkan hasil cetak selisih Stock Opname kepada pihak yang tidak berwenang.</div>'+
+                  '<div style="font-size:14px;line-height:1.65;margin-bottom:10px">Dilarang memperlihatkan atau membagikan hasil cetak selisih Stock Opname milik toko lain.</div>'+
+                  '<div style="font-size:14px;line-height:1.65;margin-bottom:18px">Setiap pengguna wajib menjaga kerahasiaan data dan bertanggung jawab atas penggunaannya.</div>'+
+                  '<div id="carrStockOpnameCountdown" style="font-size:13px;font-weight:800;text-align:center;margin-bottom:14px;color:#555">Silakan baca peringatan. Lanjut dalam 3 detik…</div>'+
+                  '<div style="display:flex;gap:10px"><button id="carrStockOpnameCancel" style="flex:1;border:0;border-radius:10px;padding:13px;background:#e5e7eb;color:#111;font-weight:800">BATAL</button>'+
+                  '<button id="carrStockOpnameContinue" disabled style="flex:1;border:0;border-radius:10px;padding:13px;background:#b91c1c;color:#fff;font-weight:800;opacity:.45">LANJUTKAN</button></div>';
+                overlay.appendChild(panel);
+                document.body.appendChild(overlay);
+                var cancel=panel.querySelector('#carrStockOpnameCancel');
+                var proceed=panel.querySelector('#carrStockOpnameContinue');
+                var countdown=panel.querySelector('#carrStockOpnameCountdown');
+                var seconds=3;
+                var timer=window.setInterval(function(){
+                  seconds--;
+                  if(seconds<=0){
+                    window.clearInterval(timer);
+                    countdown.textContent='Peringatan telah ditampilkan. Anda dapat melanjutkan.';
+                    proceed.disabled=false;
+                    proceed.style.opacity='1';
+                    proceed.style.cursor='pointer';
+                  }else{
+                    countdown.textContent='Silakan baca peringatan. Lanjut dalam '+seconds+' detik…';
+                  }
+                },1000);
+                cancel.addEventListener('click',function(){
+                  window.clearInterval(timer);
+                  overlay.remove();
+                });
+                proceed.addEventListener('click',async function(){
+                  if(proceed.disabled) return;
+                  proceed.disabled=true;
+                  proceed.textContent='MEMBUKA…';
+                  try{
+                    await plugin.openStockOpname({storeCode:code});
+                    overlay.remove();
+                  }catch(openError){
+                    window.clearInterval(timer);
+                    overlay.remove();
+                    alert(openError && openError.message ? openError.message : 'Stock Opname gagal dibuka.');
+                  }
+                });
               }catch(e){
                 alert(e && e.message ? e.message : 'Stock Opname gagal dibuka.');
               }
