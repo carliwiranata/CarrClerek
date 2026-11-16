@@ -71,6 +71,7 @@ Deno.serve(async (req) => {
       .from('stock_opname_access_attempts')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', user.id)
+      .eq('success', false)
       .gte('created_at', new Date(Date.now() - 15 * 60 * 1000).toISOString())
     if (countError) throw new Error('Pemeriksaan batas percobaan gagal: ' + countError.message)
     if ((count || 0) >= 5) {
