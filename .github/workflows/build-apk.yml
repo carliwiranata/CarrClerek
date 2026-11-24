@@ -991,13 +991,13 @@ jobs:
                 if(!sid)return;
                 var key='carrclerek_login_session_'+session.user.id;
                 if(localStorage.getItem(key)===sid)return;
-                var r=await window.supa.rpc('record_carrclerek_activity',{p_event_type:'login',p_feature_name:null,p_store_code:null});
+                var r=await supa.rpc('record_carrclerek_activity',{p_event_type:'login',p_feature_name:null,p_store_code:null});
                 if(!r.error)localStorage.setItem(key,sid);
                 else console.warn('[CarrClerek activity] Login log gagal:',r.error.message);
               }catch(e){console.warn('[CarrClerek activity] Login log gagal:',e);}
             }
             function installLoginLogger(){
-              if(wired||!window.supa||!supa.auth)return false;
+              if(wired||typeof supa==='undefined'||!supa.auth)return false;
               wired=true;
               try{
                 supa.auth.onAuthStateChange(function(event,session){
