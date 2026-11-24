@@ -152,7 +152,7 @@ jobs:
           if tag not in html:
               pos = html.lower().rfind("</body>")
               if pos >= 0:
-                  html = html[:pos] + tag + "\\n" + html[pos:]
+                  html = html[:pos] + tag + "\n" + html[pos:]
               else:
                   html += tag
               index.write_text(html, encoding="utf-8")
@@ -858,7 +858,7 @@ jobs:
               var password=await askStockPassword(featureName);if(password===null)return;
               var verified=await supa.functions.invoke('stock-opname-verify',{body:{password:String(password),feature:String(featureName),storeCode:storeCode||null}});
               if(verified.error||!verified.data||verified.data.ok!==true){var reason=verified.data&&verified.data.error?verified.data.error:(verified.error&&verified.error.message?verified.error.message:'Verifikasi gagal.');throw new Error(reason);}
-              if(await showFeatureWarning(featureName))await action();
+              if(await showFeatureWarning(featureName)){await action();try{await supa.rpc('record_carrclerek_activity',{p_event_type:'feature',p_feature_name:String(featureName),p_store_code:storeCode||null});}catch(logError){console.warn('[CarrClerek activity] Log fitur gagal:',logError);}}
             }
             async function openStock(){
               var p=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.StrukTraker;
