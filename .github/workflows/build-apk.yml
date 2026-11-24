@@ -1061,7 +1061,7 @@ jobs:
               status.textContent='Menampilkan '+logs.length+' catatan • '+from+' sampai '+to+' (WIB).';
             }
             async function refreshAdminTile(){
-              if(!isNative()||!window.supa||!supa.auth)return;
+              if(!isNative()||typeof supa==='undefined'||!supa.auth)return;
               var shell=document.getElementById('userModuleHome');
               if(!shell||!shell.isConnected)return;
               try{
