@@ -344,7 +344,8 @@ jobs:
                   }
                   Intent intent = new Intent(getActivity(), StrukTrakerActivity.class);
                   intent.putExtra("stock_store_code", storeCode);
-                  requestPassword(call, intent);
+                  getActivity().startActivity(intent);
+                  call.resolve();
               }
 
               @PluginMethod
