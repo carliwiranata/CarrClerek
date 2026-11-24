@@ -1001,7 +1001,14 @@ jobs:
               wired=true;
               try{
                 supa.auth.onAuthStateChange(function(event,session){
-                  if(event==='SIGNED_IN')setTimeout(function(){recordLogin(session);},0);
+                  if(event==='SIGNED_IN'){
+                    setTimeout(function(){recordLogin(session);refreshAdminTile();},0);
+                  }else if(event==='INITIAL_SESSION'||event==='TOKEN_REFRESHED'){
+                    setTimeout(refreshAdminTile,0);
+                  }else if(event==='SIGNED_OUT'){
+                    var old=document.querySelector('[data-carr-protected="admin-activity"]');
+                    if(old)old.remove();
+                  }
                 });
               }catch(e){wired=false;return false;}
               return true;
