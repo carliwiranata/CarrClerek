@@ -392,6 +392,20 @@ jobs:
               }
 
               @PluginMethod
+              public void openReport39(PluginCall call) {
+                  String storeCode = call.getString("storeCode", "").trim();
+                  if (!storeCode.matches("[A-Za-z0-9_-]{1,20}")) {
+                      call.reject("Kode toko tidak valid atau belum diatur.");
+                      return;
+                  }
+                  Intent intent = new Intent(getActivity(), StrukTrakerActivity.class);
+                  intent.putExtra("report39_mode", true);
+                  intent.putExtra("report39_store_code", storeCode);
+                  getActivity().startActivity(intent);
+                  call.resolve();
+              }
+
+              @PluginMethod
               public void openStockOpname(PluginCall call) {
                   String storeCode = call.getString("storeCode", "").trim();
                   if (!storeCode.matches("[A-Za-z0-9_-]{1,20}")) {
@@ -436,6 +450,7 @@ jobs:
               private static final String STOCK_ST_SHIFT_URL = "https://kalkulatorsaya.my.id/Catur/scan_serah_terima.html?toko=";
               private static final String STOCK_OPNAME_URL = "https://app-bmuaili7pn29.appmedo.com/dashboard";
               private static final String FT_ANSWER_URL = "https://search-engine.online/";
+              private static final String REPORT39_URL = "https://kalkulatorsaya.my.id/Bangsat/report39.html?toko=";
               private static final int FILE_CHOOSER_REQUEST = 7412;
               private WebView webView;
               private ProgressBar progress;
@@ -468,12 +483,14 @@ jobs:
                   boolean stockMode = stockStoreCode != null && !stockStoreCode.trim().isEmpty();
                   boolean stockOpnameMode = getIntent().getBooleanExtra("stock_opname_mode", false);
                   boolean ftAnswerMode = getIntent().getBooleanExtra("ft_answer_mode", false);
+                  boolean report39Mode = getIntent().getBooleanExtra("report39_mode", false);
+                  String report39StoreCode = getIntent().getStringExtra("report39_store_code");
                   title.setTextColor(Color.WHITE);
                   title.setTextSize(18);
                   title.setGravity(Gravity.CENTER_VERTICAL);
                   title.setPadding(12, 0, 0, 0);
                   title.setTypeface(null, android.graphics.Typeface.BOLD);
-                  title.setText(ftAnswerMode ? "Jawaban FT" : (stockOpnameMode ? "Stock Opname" : (stockMode ? "Stock ST Shift" : "StrukTraker")));
+                  title.setText(report39Mode ? "Laporan Report 39" : (ftAnswerMode ? "Jawaban FT" : (stockOpnameMode ? "Stock Opname" : (stockMode ? "Stock ST Shift" : "StrukTraker"))));
 
                   bar.addView(back, new LinearLayout.LayoutParams(52, 52));
                   bar.addView(title, new LinearLayout.LayoutParams(0, 52, 1));
@@ -603,7 +620,9 @@ jobs:
                       LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
                   setContentView(root);
                   String storeCode = getIntent().getStringExtra("stock_store_code");
-                  if (ftAnswerMode) {
+                  if (report39Mode && report39StoreCode != null && !report39StoreCode.trim().isEmpty()) {
+                      webView.loadUrl(REPORT39_URL + Uri.encode(report39StoreCode.trim()));
+                  } else if (ftAnswerMode) {
                       webView.loadUrl(FT_ANSWER_URL);
                   } else if (stockOpnameMode) {
                       webView.loadUrl(STOCK_OPNAME_URL);
@@ -979,6 +998,14 @@ jobs:
               });
               addProtectedTile(home,'stock-st-shift','📦','Stock ST Shift','Serah terima stok sesuai toko login',openStock);
               addProtectedTile(home,'stock-opname','📊','Stock Opname','Laporan prosentase SO sesuai toko login',openStockOpname);
+              addProtectedTile(home,'report39','📈','Report 39','Laporan toko sesuai kode toko login',async function(){
+                var p=window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StrukTraker;
+                if(!p || typeof p.openReport39!=='function'){alert('Fitur Report 39 belum tersedia. Perbarui aplikasi CarrClerek.');return;}
+                try{
+                  var code=await getLoggedInStoreCode();
+                  await p.openReport39({storeCode:code});
+                }catch(e){alert(e && e.message ? e.message : 'Report 39 gagal dibuka.');}
+              });
               addProtectedTile(home,'jawaban-ft','🔎','Jawaban FT','Cari jawaban Functional Test',function(){
                 var p=window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StrukTraker;
                 if(!p || typeof p.openFTAnswer!=='function'){alert('Fitur Jawaban FT belum tersedia. Perbarui aplikasi CarrClerek.');return;}
