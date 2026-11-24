@@ -967,6 +967,137 @@ jobs:
           grep -n "StrukTrakerActivity" android/app/src/main/AndroidManifest.xml
           grep -n "CARRCLEREK_STRUKTRAKER_NATIVE_ENTRY" www/index.html
 
+      # ==========================================================
+      # ADMIN ACTIVITY LOG + DASHBOARD
+      # ==========================================================
+      - name: Add Admin Activity Dashboard
+        run: |
+          set -e
+          cat > www/carrclerek-admin-activity.js <<'EOF'
+          (function(){
+            'use strict';
+            var wired=false, tile=null, profile=null;
+            function isNative(){var c=window.Capacitor;return !!(c&&typeof c.isNativePlatform==='function'&&c.isNativePlatform());}
+            function localDate(d){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(d||new Date());}
+            function dateStart(s){return new Date(s+'T00:00:00+07:00').toISOString();}
+            function nextDate(s){var d=new Date(s+'T00:00:00+07:00');d.setUTCDate(d.getUTCDate()+1);return d.toISOString();}
+            function fmt(s){return new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'short',timeStyle:'medium'}).format(new Date(s));}
+            function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+            function jwtSessionId(token){try{var p=token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');var x=JSON.parse(atob(p));return x.session_id||x.sid||'';}catch(e){return '';}}
+            async function recordLogin(session){
+              try{
+                if(!session||!session.access_token||!session.user)return;
+                var sid=jwtSessionId(session.access_token);
+                if(!sid)return;
+                var key='carrclerek_login_session_'+session.user.id;
+                if(localStorage.getItem(key)===sid)return;
+                var r=await window.supa.rpc('record_carrclerek_activity',{p_event_type:'login',p_feature_name:null,p_store_code:null});
+                if(!r.error)localStorage.setItem(key,sid);
+                else console.warn('[CarrClerek activity] Login log gagal:',r.error.message);
+              }catch(e){console.warn('[CarrClerek activity] Login log gagal:',e);}
+            }
+            function installLoginLogger(){
+              if(wired||!window.supa||!supa.auth)return false;
+              wired=true;
+              try{
+                supa.auth.onAuthStateChange(function(event,session){
+                  if(event==='SIGNED_IN')setTimeout(function(){recordLogin(session);},0);
+                });
+              }catch(e){wired=false;return false;}
+              return true;
+            }
+            function closePanel(){var x=document.getElementById('carrAdminActivityOverlay');if(x)x.remove();}
+            function buildPanel(){
+              closePanel();
+              var ov=document.createElement('div');ov.id='carrAdminActivityOverlay';
+              ov.style.cssText='position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:10px;box-sizing:border-box;';
+              ov.innerHTML='<section style="width:100%;max-width:900px;max-height:94vh;overflow:auto;background:#fff;color:#171717;border-radius:18px;padding:16px;box-sizing:border-box;font-family:Arial,sans-serif">'+
+                '<header style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div><div style="font-size:19px;font-weight:900">📋 Riwayat Aktivitas User</div><div style="font-size:12px;color:#666;margin-top:4px">Login dan penggunaan fitur • Waktu WIB</div></div><button id="carrAdminClose" style="border:0;border-radius:9px;padding:9px 13px;background:#eee;font-weight:800">TUTUP</button></header>'+
+                '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:14px 0">'+
+                '<label style="font-size:12px;font-weight:700">Dari tanggal<input id="carrActFrom" type="date" style="display:block;width:100%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:9px;margin-top:5px"></label>'+
+                '<label style="font-size:12px;font-weight:700">Sampai tanggal<input id="carrActTo" type="date" style="display:block;width:100%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:9px;margin-top:5px"></label>'+
+                '<label style="font-size:12px;font-weight:700">User<select id="carrActUser" style="display:block;width:100%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:9px;margin-top:5px"><option value="">Semua user</option></select></label>'+
+                '<label style="font-size:12px;font-weight:700">Jenis aktivitas<select id="carrActType" style="display:block;width:100%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:9px;margin-top:5px"><option value="">Semua aktivitas</option><option value="login">Login</option><option value="feature">Penggunaan fitur</option></select></label>'+
+                '<label style="font-size:12px;font-weight:700;grid-column:1/-1">Nama fitur<select id="carrActFeature" style="display:block;width:100%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:9px;margin-top:5px"><option value="">Semua fitur</option><option>StrukTraker</option><option>Stock ST Shift</option><option>Stock Opname</option><option>Cek Penjualan</option><option>Report 39</option><option>Jawaban FT</option></select></label></div>'+
+                '<button id="carrActApply" style="width:100%;border:0;border-radius:10px;padding:12px;background:#b91c1c;color:#fff;font-weight:900">TAMPILKAN RIWAYAT</button>'+
+                '<div id="carrActStatus" style="font-size:12px;color:#666;margin:10px 0">Memuat data…</div>'+
+                '<div id="carrActSummary" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0"></div>'+
+                '<div id="carrActGroups" style="margin:12px 0"></div>'+
+                '<div style="font-weight:900;margin:12px 0 7px">Detail aktivitas</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:540px"><thead><tr style="background:#f3f4f6;text-align:left"><th style="padding:9px">Tanggal & jam (WIB)</th><th style="padding:9px">User</th><th style="padding:9px">Aktivitas</th><th style="padding:9px">Fitur</th><th style="padding:9px">Toko</th></tr></thead><tbody id="carrActRows"></tbody></table></div>'+
+                '<div style="font-size:11px;color:#777;margin-top:9px">Maksimal 1.000 catatan ditampilkan per pencarian.</div></section>';
+              document.body.appendChild(ov);
+              ov.querySelector('#carrAdminClose').onclick=closePanel;
+              ov.addEventListener('click',function(e){if(e.target===ov)closePanel();});
+              var today=localDate();ov.querySelector('#carrActFrom').value=today;ov.querySelector('#carrActTo').value=today;
+              loadUsers().then(function(){loadLogs();});
+              ov.querySelector('#carrActApply').onclick=loadLogs;
+            }
+            async function loadUsers(){
+              var sel=document.getElementById('carrActUser');if(!sel)return;
+              var r=await supa.from('profiles').select('id,username,full_name').order('username').limit(1000);
+              if(r.error){console.warn('[CarrClerek admin] Daftar user:',r.error.message);return;}
+              (r.data||[]).forEach(function(p){var o=document.createElement('option');o.value=p.id;o.textContent=p.full_name||p.username||p.id.slice(0,8);sel.appendChild(o);});
+            }
+            async function loadLogs(){
+              var status=document.getElementById('carrActStatus');if(!status)return;
+              var from=document.getElementById('carrActFrom').value,to=document.getElementById('carrActTo').value;
+              if(!from||!to||from>to){status.textContent='Rentang tanggal tidak valid.';return;}
+              status.textContent='Mengambil data aktivitas…';
+              var q=supa.from('user_activity_logs').select('id,user_id,event_type,feature_name,store_code,occurred_at').gte('occurred_at',dateStart(from)).lt('occurred_at',nextDate(to)).order('occurred_at',{ascending:false}).limit(1000);
+              var user=document.getElementById('carrActUser').value,type=document.getElementById('carrActType').value,feature=document.getElementById('carrActFeature').value;
+              if(user)q=q.eq('user_id',user);if(type)q=q.eq('event_type',type);if(feature)q=q.eq('feature_name',feature);
+              var r=await q;
+              if(r.error){status.textContent='Gagal membaca riwayat: '+r.error.message+'. Pastikan SQL supabase/admin_activity_logs.sql sudah dijalankan.';return;}
+              var logs=r.data||[],ids=[...new Set(logs.map(function(x){return x.user_id;}))],names={};
+              if(ids.length){var pr=await supa.from('profiles').select('id,username,full_name').in('id',ids);(pr.data||[]).forEach(function(p){names[p.id]=p.full_name||p.username||p.id.slice(0,8);});}
+              var logins=logs.filter(function(x){return x.event_type==='login';}).length,features=logs.length-logins;
+              document.getElementById('carrActSummary').innerHTML=[['Total login',logins],['Penggunaan fitur',features],['User aktif',ids.length]].map(function(x){return '<div style="background:#f7f7f7;border-radius:10px;padding:10px"><div style="font-size:11px;color:#666">'+x[0]+'</div><div style="font-size:22px;font-weight:900">'+x[1]+'</div></div>';}).join('');
+              var byUser={},byFeature={};
+              logs.forEach(function(x){var n=names[x.user_id]||x.user_id.slice(0,8);byUser[n]=byUser[n]||{login:0,feature:0};byUser[n][x.event_type==='login'?'login':'feature']++;if(x.event_type==='feature'){byFeature[x.feature_name]=(byFeature[x.feature_name]||0)+1;}});
+              var groups='<div style="font-weight:900;margin:8px 0">Ringkasan per user</div>'+Object.keys(byUser).map(function(n){return '<div style="padding:8px 0;border-bottom:1px solid #eee;font-size:12px"><b>'+esc(n)+'</b> — Login: '+byUser[n].login+' kali • Penggunaan fitur: '+byUser[n].feature+' kali</div>';}).join('');
+              groups+='<div style="font-weight:900;margin:12px 0 6px">Ringkasan per fitur</div>'+Object.keys(byFeature).map(function(n){return '<span style="display:inline-block;background:#f3f4f6;border-radius:20px;padding:7px 10px;margin:3px;font-size:12px">'+esc(n)+': <b>'+byFeature[n]+'</b></span>';}).join('');
+              document.getElementById('carrActGroups').innerHTML=groups;
+              document.getElementById('carrActRows').innerHTML=logs.map(function(x){return '<tr style="border-top:1px solid #eee"><td style="padding:9px;white-space:nowrap">'+esc(fmt(x.occurred_at))+'</td><td style="padding:9px">'+esc(names[x.user_id]||x.user_id.slice(0,8))+'</td><td style="padding:9px">'+(x.event_type==='login'?'Login':'Fitur dibuka')+'</td><td style="padding:9px">'+esc(x.feature_name||'—')+'</td><td style="padding:9px">'+esc(x.store_code||'—')+'</td></tr>';}).join('')||'<tr><td colspan="5" style="padding:15px;text-align:center;color:#777">Belum ada aktivitas pada rentang tanggal ini.</td></tr>';
+              status.textContent='Menampilkan '+logs.length+' catatan • '+from+' sampai '+to+' (WIB).';
+            }
+            async function refreshAdminTile(){
+              if(!isNative()||!window.supa||!supa.auth)return;
+              var shell=document.getElementById('userModuleHome');
+              if(!shell||!shell.isConnected)return;
+              try{
+                var a=await supa.auth.getUser();if(!a.data||!a.data.user)return;
+                var p=await supa.from('profiles').select('role,is_active,expires_at').eq('id',a.data.user.id).maybeSingle();
+                var allowed=!!(p.data&&String(p.data.role||'').toLowerCase()==='admin'&&p.data.is_active!==false&&(!p.data.expires_at||new Date(p.data.expires_at)>new Date()));
+                var old=shell.querySelector('[data-carr-protected="admin-activity"]');
+                if(!allowed){if(old)old.remove();return;}
+                if(old)return;
+                var b=document.createElement('button');b.type='button';b.className='user-module-tile';b.dataset.carrProtected='admin-activity';
+                b.innerHTML='<div class="user-module-icon">🛡️</div><div class="user-module-name">Riwayat Aktivitas</div><div class="user-module-sub">Pantau login dan penggunaan fitur user</div>';
+                b.addEventListener('click',buildPanel);shell.appendChild(b);
+              }catch(e){console.warn('[CarrClerek admin] Pemeriksaan admin gagal:',e);}
+            }
+            function start(){
+              installLoginLogger();
+              if(!wired){setTimeout(start,800);return;}
+              refreshAdminTile();
+              var mo=new MutationObserver(function(){refreshAdminTile();});mo.observe(document.documentElement,{childList:true,subtree:true});
+              supa.auth.getSession().then(function(r){if(r.data&&r.data.session)refreshAdminTile();});
+            }
+            if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+          })();
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("www/index.html")
+          html = p.read_text(encoding="utf-8")
+          tag = '<script src="carrclerek-admin-activity.js"></script>'
+          if tag not in html:
+              pos = html.lower().rfind("</body>")
+              html = html[:pos] + tag + "\\n" + html[pos:] if pos >= 0 else html + tag
+              p.write_text(html, encoding="utf-8")
+          PY
+          echo "Admin activity dashboard script installed."
+
       - name: Sync Android
         run: |
           npx cap sync android
