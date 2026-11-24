@@ -328,47 +328,11 @@ jobs:
 
           @CapacitorPlugin(name = "StrukTraker")
           public class StrukTrakerPlugin extends Plugin {
-              private static final String ACCESS_PASSWORD = "admcarli";
-
-              private void requestPassword(PluginCall call, Intent intent) {
-                  getActivity().runOnUiThread(() -> {
-                      EditText passwordInput = new EditText(getActivity());
-                      passwordInput.setSingleLine(true);
-                      passwordInput.setInputType(
-                          InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD
-                      );
-                      passwordInput.setHint("Masukkan password akses");
-                      int pad = (int) (18 * getActivity().getResources().getDisplayMetrics().density);
-                      passwordInput.setPadding(pad, pad, pad, pad);
-
-                      AlertDialog dialog = new AlertDialog.Builder(getActivity())
-                          .setTitle("Verifikasi Akses")
-                          .setMessage("Masukkan password untuk membuka fitur ini.")
-                          .setView(passwordInput)
-                          .setNegativeButton("Batal", (d, which) -> call.reject("Akses dibatalkan."))
-                          .setPositiveButton("Buka", null)
-                          .create();
-
-                      dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                          .setOnClickListener(v -> {
-                              String entered = passwordInput.getText().toString();
-                              if (ACCESS_PASSWORD.equals(entered)) {
-                                  dialog.dismiss();
-                                  getActivity().startActivity(intent);
-                                  call.resolve();
-                              } else {
-                                  passwordInput.setError("Password salah");
-                                  passwordInput.setText("");
-                              }
-                          }));
-                      dialog.show();
-                  });
-              }
-
-              @PluginMethod
+                  @PluginMethod
               public void open(PluginCall call) {
                   Intent intent = new Intent(getActivity(), StrukTrakerActivity.class);
-                  requestPassword(call, intent);
+                  getActivity().startActivity(intent);
+                  call.resolve();
               }
 
               @PluginMethod
@@ -849,119 +813,63 @@ jobs:
               if(!code) throw new Error('Kode toko tidak ditemukan.');
               return code;
             }
-            async function openStock(){
-              var cap=window.Capacitor;
-              var plugin=cap && cap.Plugins && cap.Plugins.StrukTraker;
-              if(!plugin || typeof plugin.openStockSTShift!=='function'){
-                alert('Fitur belum tersedia. Silakan perbarui aplikasi CarrClerek.');
-                return;
-              }
-              try{
-                var code=await getLoggedInStoreCode();
-                await plugin.openStockSTShift({storeCode:code});
-              }catch(e){
-                if(e && e.message && e.message!=='Akses dibatalkan.') alert(e.message);
-                else if(!e || e.message!=='Akses dibatalkan.') alert('Stock ST Shift gagal dibuka.');
-              }
-            }
-            function askStockPassword(){
+            function askStockPassword(featureName){
               return new Promise(function(resolve){
                 var overlay=document.createElement('div');
                 overlay.style.cssText='position:fixed;inset:0;z-index:2147483646;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;';
                 var panel=document.createElement('div');
                 panel.style.cssText='width:100%;max-width:400px;background:#fff;border-radius:16px;padding:20px;box-sizing:border-box;color:#171717;font-family:Arial,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.35);';
-                panel.innerHTML='<div style="font-size:18px;font-weight:900;margin-bottom:8px">Verifikasi Stock Opname</div>'+
+                panel.innerHTML='<div style="font-size:18px;font-weight:900;margin-bottom:8px">Verifikasi '+featureName+'</div>'+
                   '<div style="font-size:13px;color:#555;margin-bottom:14px">Masukkan password rahasia untuk melanjutkan.</div>'+
-                  '<input id="carrStockPasswordInput" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" placeholder="Password" style="display:block;width:100%;box-sizing:border-box;padding:13px 12px;border:1px solid #ccc;border-radius:10px;font-size:16px;margin-bottom:14px;color:#111;background:#fff;-webkit-text-security:disc" />'+
-                  '<div style="display:flex;gap:10px"><button id="carrStockPasswordCancel" type="button" style="flex:1;border:0;border-radius:10px;padding:13px;background:#e5e7eb;color:#111;font-weight:800">BATAL</button>'+
-                  '<button id="carrStockPasswordSubmit" type="button" style="flex:1;border:0;border-radius:10px;padding:13px;background:#b91c1c;color:#fff;font-weight:800">VERIFIKASI</button></div>';
-                overlay.appendChild(panel);
-                document.body.appendChild(overlay);
-                var input=panel.querySelector('#carrStockPasswordInput');
-                var done=false;
-                function finish(value){
-                  if(done) return;
-                  done=true;
-                  overlay.remove();
-                  resolve(value);
-                }
-                panel.querySelector('#carrStockPasswordCancel').addEventListener('click',function(){finish(null);});
-                panel.querySelector('#carrStockPasswordSubmit').addEventListener('click',function(){finish(input.value);});
-                input.addEventListener('keydown',function(event){
-                  if(event.key==='Enter'){event.preventDefault();finish(input.value);}
-                  if(event.key==='Escape'){finish(null);}
-                });
-                overlay.addEventListener('click',function(event){if(event.target===overlay) finish(null);});
-                input.focus();
+                  '<input id="carrFeaturePasswordInput" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" placeholder="Password" style="display:block;width:100%;box-sizing:border-box;padding:13px 12px;border:1px solid #ccc;border-radius:10px;font-size:16px;margin-bottom:14px;color:#111;background:#fff;-webkit-text-security:disc" />'+
+                  '<div style="display:flex;gap:10px"><button id="carrFeaturePasswordCancel" type="button" style="flex:1;border:0;border-radius:10px;padding:13px;background:#e5e7eb;color:#111;font-weight:800">BATAL</button>'+
+                  '<button id="carrFeaturePasswordSubmit" type="button" style="flex:1;border:0;border-radius:10px;padding:13px;background:#b91c1c;color:#fff;font-weight:800">VERIFIKASI</button></div>';
+                overlay.appendChild(panel);document.body.appendChild(overlay);
+                var input=panel.querySelector('#carrFeaturePasswordInput'),done=false;
+                function finish(value){if(done)return;done=true;overlay.remove();resolve(value);}
+                panel.querySelector('#carrFeaturePasswordCancel').addEventListener('click',function(){finish(null);});
+                panel.querySelector('#carrFeaturePasswordSubmit').addEventListener('click',function(){finish(input.value);});
+                input.addEventListener('keydown',function(event){if(event.key==='Enter'){event.preventDefault();finish(input.value);}if(event.key==='Escape')finish(null);});
+                overlay.addEventListener('click',function(event){if(event.target===overlay)finish(null);});input.focus();
               });
             }
-            async function openStockOpname(){
-              var cap=window.Capacitor;
-              var plugin=cap && cap.Plugins && cap.Plugins.StrukTraker;
-              if(!plugin || typeof plugin.openStockOpname!=='function'){
-                alert('Fitur Stock Opname belum tersedia. Perbarui aplikasi CarrClerek.');
-                return;
-              }
-              try{
-                var code=await getLoggedInStoreCode();
-                var password=await askStockPassword();
-                if(password===null) return;
-                var verified=await supa.functions.invoke('stock-opname-verify',{body:{password:String(password)}});
-                if(verified.error || !verified.data || verified.data.ok!==true){
-                  var reason=verified.data && verified.data.error ? verified.data.error : (verified.error && verified.error.message ? verified.error.message : 'Verifikasi gagal.');
-                  throw new Error(reason);
-                }
-
+            function showFeatureWarning(featureName){
+              return new Promise(function(resolve){
                 var overlay=document.createElement('div');
-                overlay.id='carrStockOpnameWarning';
                 overlay.style.cssText='position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;';
                 var panel=document.createElement('div');
                 panel.style.cssText='width:100%;max-width:440px;background:#fff;border-radius:18px;padding:22px;box-sizing:border-box;color:#171717;font-family:Arial,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.35);';
                 panel.innerHTML='<div style="font-size:20px;font-weight:900;color:#b91c1c;margin-bottom:12px">⚠️ PERINGATAN DAN KERAHASIAAN DATA</div>'+
-                  '<div style="font-size:14px;line-height:1.65;margin-bottom:10px">Dilarang menyebarkan hasil cetak selisih Stock Opname kepada pihak yang tidak berwenang.</div>'+
-                  '<div style="font-size:14px;line-height:1.65;margin-bottom:10px">Dilarang memperlihatkan atau membagikan hasil cetak selisih Stock Opname milik toko lain.</div>'+
+                  '<div style="font-size:14px;line-height:1.65;margin-bottom:10px">Data pada fitur '+featureName+' hanya boleh digunakan untuk kepentingan pekerjaan dan oleh pihak yang berwenang.</div>'+
+                  '<div style="font-size:14px;line-height:1.65;margin-bottom:10px">Dilarang menyebarkan, memperlihatkan, atau membagikan data maupun hasil cetak kepada pihak yang tidak berwenang atau milik toko lain.</div>'+
                   '<div style="font-size:14px;line-height:1.65;margin-bottom:18px">Setiap pengguna wajib menjaga kerahasiaan data dan bertanggung jawab atas penggunaannya.</div>'+
-                  '<div id="carrStockOpnameCountdown" style="font-size:13px;font-weight:800;text-align:center;margin-bottom:14px;color:#555">Silakan baca peringatan. Lanjut dalam 3 detik…</div>'+
-                  '<div style="display:flex;gap:10px"><button id="carrStockOpnameCancel" style="flex:1;border:0;border-radius:10px;padding:13px;background:#e5e7eb;color:#111;font-weight:800">BATAL</button>'+
-                  '<button id="carrStockOpnameContinue" disabled style="flex:1;border:0;border-radius:10px;padding:13px;background:#b91c1c;color:#fff;font-weight:800;opacity:.45">LANJUTKAN</button></div>';
-                overlay.appendChild(panel);
-                document.body.appendChild(overlay);
-                var cancel=panel.querySelector('#carrStockOpnameCancel');
-                var proceed=panel.querySelector('#carrStockOpnameContinue');
-                var countdown=panel.querySelector('#carrStockOpnameCountdown');
-                var seconds=3;
-                var timer=window.setInterval(function(){
-                  seconds--;
-                  if(seconds<=0){
-                    window.clearInterval(timer);
-                    countdown.textContent='Peringatan telah ditampilkan. Anda dapat melanjutkan.';
-                    proceed.disabled=false;
-                    proceed.style.opacity='1';
-                    proceed.style.cursor='pointer';
-                  }else{
-                    countdown.textContent='Silakan baca peringatan. Lanjut dalam '+seconds+' detik…';
-                  }
-                },1000);
-                cancel.addEventListener('click',function(){
-                  window.clearInterval(timer);
-                  overlay.remove();
-                });
-                proceed.addEventListener('click',async function(){
-                  if(proceed.disabled) return;
-                  proceed.disabled=true;
-                  proceed.textContent='MEMBUKA…';
-                  try{
-                    await plugin.openStockOpname({storeCode:code});
-                    overlay.remove();
-                  }catch(openError){
-                    window.clearInterval(timer);
-                    overlay.remove();
-                    alert(openError && openError.message ? openError.message : 'Stock Opname gagal dibuka.');
-                  }
-                });
-              }catch(e){
-                alert(e && e.message ? e.message : 'Stock Opname gagal dibuka.');
-              }
+                  '<div id="carrFeatureCountdown" style="font-size:13px;font-weight:800;text-align:center;margin-bottom:14px;color:#555">Silakan baca peringatan. Lanjut dalam 3 detik…</div>'+
+                  '<div style="display:flex;gap:10px"><button id="carrFeatureCancel" type="button" style="flex:1;border:0;border-radius:10px;padding:13px;background:#e5e7eb;color:#111;font-weight:800">BATAL</button>'+
+                  '<button id="carrFeatureContinue" type="button" disabled style="flex:1;border:0;border-radius:10px;padding:13px;background:#b91c1c;color:#fff;font-weight:800;opacity:.45">SAYA MENGERTI, LANJUTKAN</button></div>';
+                overlay.appendChild(panel);document.body.appendChild(overlay);
+                var proceed=panel.querySelector('#carrFeatureContinue'),countdown=panel.querySelector('#carrFeatureCountdown'),seconds=3;
+                var timer=window.setInterval(function(){seconds--;if(seconds<=0){window.clearInterval(timer);countdown.textContent='Peringatan telah ditampilkan. Anda dapat melanjutkan.';proceed.disabled=false;proceed.style.opacity='1';proceed.style.cursor='pointer';}else countdown.textContent='Silakan baca peringatan. Lanjut dalam '+seconds+' detik…';},1000);
+                panel.querySelector('#carrFeatureCancel').addEventListener('click',function(){window.clearInterval(timer);overlay.remove();resolve(false);});
+                proceed.addEventListener('click',function(){if(proceed.disabled)return;window.clearInterval(timer);overlay.remove();resolve(true);});
+              });
+            }
+            async function verifyAndRunFeature(featureName,storeCode,action){
+              var password=await askStockPassword(featureName);if(password===null)return;
+              var verified=await supa.functions.invoke('stock-opname-verify',{body:{password:String(password),feature:String(featureName),storeCode:storeCode||null}});
+              if(verified.error||!verified.data||verified.data.ok!==true){var reason=verified.data&&verified.data.error?verified.data.error:(verified.error&&verified.error.message?verified.error.message:'Verifikasi gagal.');throw new Error(reason);}
+              if(await showFeatureWarning(featureName))await action();
+            }
+            async function openStock(){
+              var p=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.StrukTraker;
+              if(!p||typeof p.openStockSTShift!=='function'){alert('Fitur Stock ST Shift belum tersedia. Perbarui aplikasi CarrClerek.');return;}
+              try{var code=await getLoggedInStoreCode();await verifyAndRunFeature('Stock ST Shift',code,function(){return p.openStockSTShift({storeCode:code});});}
+              catch(e){alert(e&&e.message?e.message:'Stock ST Shift gagal dibuka.');}
+            }
+            async function openStockOpname(){
+              var p=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.StrukTraker;
+              if(!p||typeof p.openStockOpname!=='function'){alert('Fitur Stock Opname belum tersedia. Perbarui aplikasi CarrClerek.');return;}
+              try{var code=await getLoggedInStoreCode();await verifyAndRunFeature('Stock Opname',code,function(){return p.openStockOpname({storeCode:code});});}
+              catch(e){alert(e&&e.message?e.message:'Stock Opname gagal dibuka.');}
             }
             var retailMotivations = [
               'Senyum, sapa, dan salam. Pelayanan terbaik dimulai dari hal sederhana.',
@@ -1008,35 +916,31 @@ jobs:
               if(!home) return;
               installRetailMotivation(home);
               home.querySelectorAll('[data-user-module="po"],[data-user-module="selisih"]').forEach(function(x){x.remove();});
-              addProtectedTile(home,'struktraker','🧾','StrukTraker','Rekap struk di dalam aplikasi',function(){
-                var p=window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StrukTraker;
-                if(!p || typeof p.open!=='function'){alert('StrukTraker belum tersedia. Perbarui aplikasi CarrClerek.');return;}
-                Promise.resolve(p.open()).catch(function(e){
-                  if(e && e.message && e.message!=='Akses dibatalkan.') alert(e.message);
-                });
+              addProtectedTile(home,'struktraker','🧾','StrukTraker','Rekap struk di dalam aplikasi',async function(){
+                var p=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.StrukTraker;
+                if(!p||typeof p.open!=='function'){alert('StrukTraker belum tersedia. Perbarui aplikasi CarrClerek.');return;}
+                try{await verifyAndRunFeature('StrukTraker',null,function(){return p.open();});}
+                catch(e){alert(e&&e.message?e.message:'StrukTraker gagal dibuka.');}
               });
               addProtectedTile(home,'stock-st-shift','📦','Stock ST Shift','Serah terima stok sesuai toko login',openStock);
               addProtectedTile(home,'stock-opname','📊','Stock Opname','Laporan prosentase SO sesuai toko login',openStockOpname);
               addProtectedTile(home,'cek-penjualan','💰','Cek Penjualan','Data penjualan sesuai toko login',async function(){
-                var p=window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StrukTraker;
-                if(!p || typeof p.openCekPenjualan!=='function'){alert('Fitur Cek Penjualan belum tersedia. Perbarui aplikasi CarrClerek.');return;}
-                try{
-                  var code=await getLoggedInStoreCode();
-                  await p.openCekPenjualan({storeCode:code});
-                }catch(e){alert(e && e.message ? e.message : 'Cek Penjualan gagal dibuka.');}
+                var p=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.StrukTraker;
+                if(!p||typeof p.openCekPenjualan!=='function'){alert('Fitur Cek Penjualan belum tersedia. Perbarui aplikasi CarrClerek.');return;}
+                try{var code=await getLoggedInStoreCode();await verifyAndRunFeature('Cek Penjualan',code,function(){return p.openCekPenjualan({storeCode:code});});}
+                catch(e){alert(e&&e.message?e.message:'Cek Penjualan gagal dibuka.');}
               });
               addProtectedTile(home,'report39','📈','Report 39','Laporan toko sesuai kode toko login',async function(){
-                var p=window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StrukTraker;
-                if(!p || typeof p.openReport39!=='function'){alert('Fitur Report 39 belum tersedia. Perbarui aplikasi CarrClerek.');return;}
-                try{
-                  var code=await getLoggedInStoreCode();
-                  await p.openReport39({storeCode:code});
-                }catch(e){alert(e && e.message ? e.message : 'Report 39 gagal dibuka.');}
+                var p=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.StrukTraker;
+                if(!p||typeof p.openReport39!=='function'){alert('Fitur Report 39 belum tersedia. Perbarui aplikasi CarrClerek.');return;}
+                try{var code=await getLoggedInStoreCode();await verifyAndRunFeature('Report 39',code,function(){return p.openReport39({storeCode:code});});}
+                catch(e){alert(e&&e.message?e.message:'Report 39 gagal dibuka.');}
               });
-              addProtectedTile(home,'jawaban-ft','🔎','Jawaban FT','Cari jawaban Functional Test',function(){
-                var p=window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StrukTraker;
-                if(!p || typeof p.openFTAnswer!=='function'){alert('Fitur Jawaban FT belum tersedia. Perbarui aplikasi CarrClerek.');return;}
-                Promise.resolve(p.openFTAnswer()).catch(function(e){alert(e && e.message ? e.message : 'Jawaban FT gagal dibuka.');});
+              addProtectedTile(home,'jawaban-ft','🔎','Jawaban FT','Cari jawaban Functional Test',async function(){
+                var p=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.StrukTraker;
+                if(!p||typeof p.openFTAnswer!=='function'){alert('Jawaban FT belum tersedia. Perbarui aplikasi CarrClerek.');return;}
+                try{await verifyAndRunFeature('Jawaban FT',null,function(){return p.openFTAnswer();});}
+                catch(e){alert(e&&e.message?e.message:'Jawaban FT gagal dibuka.');}
               });
               document.querySelectorAll('#strukTrakerNativeCard,#stockSTShiftNativeCard').forEach(function(x){x.hidden=true;});
             }
