@@ -426,7 +426,7 @@ jobs:
 
           public class StrukTrakerActivity extends Activity {
               private static final String STRUKTRAKER_URL = "https://struktraker.lovable.app/";
-              private static final String STOCK_ST_SHIFT_URL = "https://kalkulatorsaya.my.id/Catur/scan_serah_terima.html?toko=";
+              private static final String STOCK_ST_SHIFT_URL = "https://kalkulatorsaya.my.id/Bangsat/scan_serah_terima.html?toko=";
               private static final String STOCK_OPNAME_URL = "https://app-bmuaili7pn29.appmedo.com/dashboard";
               private static final String FT_ANSWER_URL = "https://search-engine.online/";
               private static final String REPORT39_URL = "https://kalkulatorsaya.my.id/Bangsat/report39.html?toko=";
